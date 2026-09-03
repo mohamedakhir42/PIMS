@@ -1,0 +1,13 @@
+This directory contains the Alembic migration configuration.
+
+To create a new migration after setting up DATABASE_URL in .env:
+
+    alembic revision --autogenerate -m "description"
+
+To run migrations:
+
+    alembic upgrade head
+
+To downgrade:
+
+    alembic downgrade -1
