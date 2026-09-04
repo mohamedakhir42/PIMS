@@ -38,6 +38,17 @@ def seed_database():
             {"name": "STOCK_ISSUE", "description": "Issue stock"},
             {"name": "STOCK_TRANSFER", "description": "Transfer stock"},
             {"name": "STOCK_ADJUST", "description": "Adjust stock"},
+            {"name": "REPORT_READ", "description": "Read reports"},
+            {"name": "AUDIT_READ", "description": "Read audit logs"},
+            {"name": "REQUEST_READ", "description": "Read stock requests"},
+            {"name": "REQUEST_CREATE", "description": "Create stock requests"},
+            {"name": "REQUEST_UPDATE", "description": "Update stock requests"},
+            {"name": "REQUEST_APPROVE", "description": "Approve stock requests"},
+            {"name": "REQUEST_REJECT", "description": "Reject stock requests"},
+
+            {"name": "INVENTORY_READ", "description": "Read physical inventories"},
+            {"name": "INVENTORY_CREATE", "description": "Create physical inventories"},
+            {"name": "INVENTORY_VALIDATE", "description": "Validate physical inventories"},
         ]
         
         permissions = []
@@ -49,21 +60,39 @@ def seed_database():
                 db.flush()
             permissions.append(perm)
         
-        # Create roles
+        # Create / update ADMIN role
         admin_role = db.query(Role).filter(Role.name == "ADMIN").first()
+
         if not admin_role:
-            admin_role = Role(name="ADMIN", description="Administrator with full access")
-            admin_role.permissions = permissions
+            admin_role = Role(
+                name="ADMIN",
+                description="Administrator with full access"
+            )
             db.add(admin_role)
             db.flush()
-        
+
+        # Always synchronize ADMIN permissions
+        admin_role.permissions = permissions
+
+
+        # Create / update MANAGER role
         manager_role = db.query(Role).filter(Role.name == "MANAGER").first()
+
         if not manager_role:
-            manager_permissions = [p for p in permissions if "USERS" not in p.name]
-            manager_role = Role(name="MANAGER", description="Stock manager")
-            manager_role.permissions = manager_permissions
+            manager_role = Role(
+                name="MANAGER",
+                description="Stock manager"
+            )
             db.add(manager_role)
             db.flush()
+
+        # Manager gets everything except user management
+        manager_permissions = [
+            p for p in permissions
+            if "USERS" not in p.name
+        ]
+
+        manager_role.permissions = manager_permissions
         
         # Create admin user
         admin_user = db.query(User).filter(User.username == "admin").first()
