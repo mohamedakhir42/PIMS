@@ -9,7 +9,15 @@ import Categories from './pages/Categories'
 import Suppliers from './pages/Suppliers'
 import SupplierDetail from './pages/SupplierDetail'
 import Movements from './pages/Movements'
+import Users from './pages/Users'
+import Inventories from './pages/Inventories'
+import InventoryDetail from './pages/InventoryDetail'
+import Reports from './pages/Reports'
+import AuditLogs from './pages/AuditLogs'
+import Requests from './pages/Requests'
+import Notifications from './pages/Notifications'
 import Layout from './layouts/Layout'
+import Permissions from './pages/Permissions'
 
 function App() {
   return (
@@ -26,6 +34,14 @@ function App() {
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="suppliers/:id" element={<SupplierDetail />} />
           <Route path="movements" element={<Movements />} />
+          <Route path="users" element={<Users />} />
+          <Route path="inventories" element={<Inventories />} />
+          <Route path="inventories/:id" element={<InventoryDetail />} />
+          <Route path="permissions" element={<Permissions />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="audit-logs" element={<AuditLogs />} />
+          <Route path="requests" element={<Requests />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
       </Routes>
     </BrowserRouter>

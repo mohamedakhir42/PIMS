@@ -1,101 +1,429 @@
-import React, { useState } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import {
+  Outlet,
+  Link,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
+
 import { authService } from '../services/auth';
+
+interface MenuItem {
+  path?: string;
+  label?: string;
+  icon?: string;
+  header?: string;
+  permission?: string;
+  adminOnly?: boolean;
+}
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  /*
+   * Chargement de l'utilisateur connecté
+   */
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const user = await authService.getCurrentUser();
+
+        setCurrentUser(user);
+      } catch {
+        authService.logout();
+        navigate('/login', { replace: true });
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    loadCurrentUser();
+  }, [navigate]);
 
   const handleLogout = () => {
     authService.logout();
     navigate('/login');
   };
 
-  const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { header: 'INVENTORY' },
-    { path: '/inventory/articles', label: 'Articles', icon: '📦' },
-    { path: '/inventory/stock', label: 'Stock', icon: '📋' },
-    { path: '/categories', label: 'Categories', icon: '🏷️' },
-    { header: 'MOVEMENTS' },
-    { path: '/movements', label: 'Movements', icon: '🔄' },
-    { header: 'SUPPLIERS' },
-    { path: '/suppliers', label: 'Suppliers', icon: '🏭' },
+  /*
+   * Menu de l'application
+   *
+   * Chaque page possède maintenant une permission.
+   */
+  const menuItems: MenuItem[] = [
+    {
+      path: '/dashboard',
+      label: 'Dashboard',
+      icon: '📊',
+      permission: 'DASHBOARD_READ',
+    },
+
+    {
+      header: 'INVENTORY',
+    },
+
+    {
+      path: '/inventory/articles',
+      label: 'Articles',
+      icon: '📦',
+      permission: 'ARTICLES_READ',
+    },
+
+    {
+      path: '/inventory/stock',
+      label: 'Stock',
+      icon: '📋',
+      permission: 'STOCK_READ',
+    },
+
+    {
+      path: '/categories',
+      label: 'Categories',
+      icon: '🏷️',
+      permission: 'CATEGORIES_READ',
+    },
+
+    {
+      header: 'MOVEMENTS',
+    },
+
+    {
+      path: '/movements',
+      label: 'Movements',
+      icon: '🔄',
+      permission: 'MOVEMENTS_READ',
+    },
+
+    {
+      path: '/requests',
+      label: 'Requests',
+      icon: '📝',
+      permission: 'REQUEST_READ',
+    },
+
+    {
+      header: 'INVENTORY',
+    },
+
+    {
+      path: '/inventories',
+      label: 'Physical Inventory',
+      icon: '📊',
+      permission: 'INVENTORY_READ',
+    },
+
+    {
+      header: 'SUPPLIERS',
+    },
+
+    {
+      path: '/suppliers',
+      label: 'Suppliers',
+      icon: '🏭',
+      permission: 'SUPPLIERS_READ',
+    },
+
+    {
+      header: 'ADMINISTRATION',
+    },
+
+    {
+      path: '/users',
+      label: 'Users',
+      icon: '👥',
+      permission: 'USERS_READ',
+    },
+
+    {
+      path: '/permissions',
+      label: 'Access Management',
+      icon: '🔐',
+      adminOnly: true,
+    },
+
+    {
+      path: '/reports',
+      label: 'Reports',
+      icon: '📈',
+      permission: 'REPORT_READ',
+    },
+
+    {
+      path: '/audit-logs',
+      label: 'Audit Logs',
+      icon: '📜',
+      permission: 'AUDIT_READ',
+    },
+
+    {
+      path: '/notifications',
+      label: 'Notifications',
+      icon: '🔔',
+    },
   ];
 
+  /*
+   * Vérifie si l'utilisateur peut voir une entrée du menu.
+   */
+  const canSeeMenuItem = (item: MenuItem): boolean => {
+    if (!currentUser) {
+      return false;
+    }
+
+    /*
+     * ADMIN voit tout.
+     */
+    if (currentUser.role_name === 'ADMIN') {
+      return true;
+    }
+
+    /*
+     * Page réservée aux ADMIN.
+     */
+    if (item.adminOnly) {
+      return false;
+    }
+
+    /*
+     * Notifications accessibles à tous
+     * les utilisateurs authentifiés.
+     */
+    if (!item.permission) {
+      return true;
+    }
+
+    /*
+     * Permissions de l'utilisateur.
+     */
+    const permissions: string[] =
+      currentUser.permissions || [];
+
+    return permissions.includes(item.permission);
+  };
+
+  /*
+   * Filtrer les éléments du menu.
+   *
+   * Les headers sont affichés uniquement s'ils
+   * contiennent au moins une page accessible.
+   */
+  const visibleMenuItems = menuItems.filter(
+    (item, index) => {
+      if (!item.header) {
+        return canSeeMenuItem(item);
+      }
+
+      /*
+       * Cherche la prochaine page après le header.
+       */
+      for (
+        let i = index + 1;
+        i < menuItems.length;
+        i++
+      ) {
+        const nextItem = menuItems[i];
+
+        if (nextItem.header) {
+          break;
+        }
+
+        if (canSeeMenuItem(nextItem)) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+  );
+
+  /*
+   * Évite d'afficher le Layout pendant
+   * la récupération de l'utilisateur.
+   */
+  if (loadingUser) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: '100vh' }}
+      >
+        <div className="text-center">
+          <div
+            className="spinner-border"
+            role="status"
+          />
+
+          <div className="mt-3 text-muted">
+            Loading...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="d-flex" style={{ minHeight: '100vh' }}>
+    <div
+      className="d-flex"
+      style={{ minHeight: '100vh' }}
+    >
+
       {/* Sidebar */}
       <div
-        className={`bg-dark text-white ${sidebarOpen ? 'col-md-2' : 'col-auto'} d-flex flex-column`}
-        style={{ minWidth: sidebarOpen ? '250px' : '60px', transition: 'width 0.3s' }}
+        className={`bg-dark text-white ${
+          sidebarOpen ? 'col-md-2' : 'col-auto'
+        } d-flex flex-column`}
+        style={{
+          minWidth: sidebarOpen
+            ? '250px'
+            : '60px',
+          transition: 'width 0.3s',
+        }}
       >
+
+        {/* Logo */}
         <div className="p-3 border-bottom border-secondary">
-          <h5 className={`mb-0 ${!sidebarOpen && 'd-none'}`}>PIMS</h5>
-          <span className={`small ${!sidebarOpen && 'd-none'}`}>Phosboucraa Inventory</span>
+
+          <h5
+            className={`mb-0 ${
+              !sidebarOpen ? 'd-none' : ''
+            }`}
+          >
+            PIMS
+          </h5>
+
+          <span
+            className={`small ${
+              !sidebarOpen ? 'd-none' : ''
+            }`}
+          >
+            Phosboucraa Inventory
+          </span>
+
         </div>
-        
+
+        {/* Navigation */}
         <nav className="flex-grow-1 py-3">
-          {menuItems.map((item, index) => {
-            if (item.header) {
+
+          {visibleMenuItems.map(
+            (item, index) => {
+
+              /*
+               * Section header
+               */
+              if (item.header) {
+                return (
+                  <div
+                    key={`header-${index}`}
+                    className={`px-3 py-2 text-muted small fw-bold ${
+                      !sidebarOpen
+                        ? 'd-none'
+                        : ''
+                    }`}
+                  >
+                    {item.header}
+                  </div>
+                );
+              }
+
+              /*
+               * Menu item
+               */
+              const isActive =
+                location.pathname === item.path;
+
               return (
-                <div
-                  key={index}
-                  className={`px-3 py-2 text-muted small fw-bold ${!sidebarOpen && 'd-none'}`}
+                <Link
+                  key={item.path}
+                  to={item.path!}
+                  className={`d-flex align-items-center px-3 py-2 text-decoration-none ${
+                    isActive
+                      ? 'bg-primary text-white'
+                      : 'text-white hover-bg-secondary'
+                  }`}
+                  style={{
+                    transition:
+                      'background-color 0.2s',
+                  }}
                 >
-                  {item.header}
-                </div>
+
+                  <span className="fs-5">
+                    {item.icon}
+                  </span>
+
+                  <span
+                    className={`ms-2 ${
+                      !sidebarOpen
+                        ? 'd-none'
+                        : ''
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+
+                </Link>
               );
             }
-            
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={index}
-                to={item.path}
-                className={`d-flex align-items-center px-3 py-2 text-decoration-none ${
-                  isActive ? 'bg-primary text-white' : 'text-white hover-bg-secondary'
-                }`}
-                style={{ transition: 'background-color 0.2s' }}
-              >
-                <span className="fs-5">{item.icon}</span>
-                <span className={`ms-2 ${!sidebarOpen && 'd-none'}`}>{item.label}</span>
-              </Link>
-            );
-          })}
+          )}
+
         </nav>
-        
+
+        {/* Logout */}
         <div className="p-3 border-top border-secondary">
+
           <button
             onClick={handleLogout}
             className="btn btn-outline-light btn-sm w-100"
           >
             🚪 Logout
           </button>
+
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-grow-1 bg-light">
+
         {/* Header */}
         <header className="bg-white shadow-sm p-3 d-flex align-items-center justify-content-between">
+
           <button
             className="btn btn-outline-secondary btn-sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() =>
+              setSidebarOpen(!sidebarOpen)
+            }
           >
             ☰
           </button>
+
           <div className="d-flex align-items-center gap-3">
-            <span className="text-muted">Phosboucraa Inventory Management</span>
+
+            <span className="text-muted">
+              Phosboucraa Inventory Management
+            </span>
+
+            {currentUser && (
+              <span className="fw-semibold">
+                {currentUser.full_name ||
+                  currentUser.username}
+              </span>
+            )}
+
           </div>
+
         </header>
 
         {/* Page Content */}
         <main className="p-4">
           <Outlet />
         </main>
+
       </div>
+
     </div>
   );
 };
