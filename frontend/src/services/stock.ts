@@ -1,39 +1,48 @@
 import api from './api';
-import { Stock, StockMovement } from '../types';
 
 export const stockService = {
-  async getStock(skip = 0, limit = 100): Promise<Stock[]> {
-    const response = await api.get<Stock[]>(`/stock?skip=${skip}&limit=${limit}`);
+  getStock: async () => {
+    const response = await api.get('/stock');
     return response.data;
   },
 
-  async getCriticalStock(): Promise<Stock[]> {
-    const response = await api.get<Stock[]>('/stock/critical');
+  getCriticalStock: async () => {
+    const response = await api.get('/stock/critical');
     return response.data;
   },
 
-  async getMovements(skip = 0, limit = 100): Promise<StockMovement[]> {
-    const response = await api.get<StockMovement[]>(`/stock/movements?skip=${skip}&limit=${limit}`);
+  getMovements: async () => {
+    const response = await api.get('/stock/movements');
     return response.data;
   },
 
-  async createReceipt(movement: Partial<StockMovement>): Promise<StockMovement> {
-    const response = await api.post<StockMovement>('/stock/receipt', movement);
+  validateMovement: async (data: any) => {
+    const response = await api.post('/stock/validate', data);
     return response.data;
   },
 
-  async createIssue(movement: Partial<StockMovement>): Promise<StockMovement> {
-    const response = await api.post<StockMovement>('/stock/issue', movement);
+  createReceipt: async (data: any) => {
+    const response = await api.post('/stock/receipt', data);
     return response.data;
   },
 
-  async createTransfer(movement: Partial<StockMovement>): Promise<StockMovement> {
-    const response = await api.post<StockMovement>('/stock/transfer', movement);
+  createIssue: async (data: any) => {
+    const response = await api.post('/stock/issue', data);
     return response.data;
   },
 
-  async createAdjustment(movement: Partial<StockMovement>): Promise<StockMovement> {
-    const response = await api.post<StockMovement>('/stock/adjustment', movement);
+  createTransfer: async (data: any) => {
+  const response = await api.post('/stock/transfer', data);
+  return response.data;
+},
+
+  createReturn: async (data: any) => {
+    const response = await api.post('/stock/return', data);
+    return response.data;
+  },
+
+  createAdjustment: async (data: any) => {
+    const response = await api.post('/stock/adjustment', data);
     return response.data;
   },
 };

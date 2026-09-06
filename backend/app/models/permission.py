@@ -15,3 +15,8 @@ class Permission(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     roles = relationship("Role", secondary="role_permissions", back_populates="permissions")
+    user_permissions = relationship(
+    "UserPermission",
+    back_populates="permission",
+    cascade="all, delete-orphan"
+)

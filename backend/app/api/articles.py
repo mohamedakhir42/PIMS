@@ -7,6 +7,7 @@ from app.models.article import Article as ArticleModel
 from app.schemas.article import ArticleCreate, ArticleUpdate, Article
 from app.utils.deps import check_permission
 from app.models.user import User
+from app.services.audit import write_audit
 
 import uuid
 
@@ -78,6 +79,18 @@ def create_article(
     db_article = ArticleModel(**article.dict())
 
     db.add(db_article)
+    db.flush()
+
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="CREATE_ARTICLE",
+        entity="Article",
+        entity_id=db_article.id,
+        new_values={"code": db_article.code, "designation": db_article.designation},
+    )
+
     db.commit()
     db.refresh(db_article)
 
@@ -107,9 +120,21 @@ def update_article(
         )
 
     update_data = article.dict(exclude_unset=True)
+    old_values = {field: getattr(db_article, field) for field in update_data.keys()}
 
     for field, value in update_data.items():
         setattr(db_article, field, value)
+
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="UPDATE_ARTICLE",
+        entity="Article",
+        entity_id=db_article.id,
+        old_values=old_values,
+        new_values=update_data,
+    )
 
     db.commit()
     db.refresh(db_article)

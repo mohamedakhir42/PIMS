@@ -19,6 +19,7 @@ from app.models.inventory_item import InventoryItem
 from app.models.notification import Notification, NotificationType
 from app.models.attachment import Attachment
 from app.models.audit_log import AuditLog
+from app.models.user_permission import UserPermission
 
 __all__ = [
     "User", "UserStatus",
@@ -42,4 +43,5 @@ __all__ = [
     "Notification", "NotificationType",
     "Attachment",
     "AuditLog",
+    "UserPermission",
 ]

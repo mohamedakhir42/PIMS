@@ -1,13 +1,17 @@
+export type UserStatus = 'ACTIVE' | 'DISABLED';
+
 export interface User {
   id: string;
   username: string;
   email: string;
   full_name?: string;
-  status: string;
+  status: UserStatus;
   role_id?: string;
   created_at: string;
   updated_at: string;
 }
+
+export type ArticleStatus = 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED';
 
 export interface Article {
   id: string;
@@ -21,11 +25,14 @@ export interface Article {
   stock_max?: number;
   reorder_point?: number;
   main_supplier_id?: string;
+  barcode?: string;
   image_url?: string;
-  status: string;
+  status: ArticleStatus;
   created_at: string;
   updated_at: string;
 }
+
+export type CategoryStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface Category {
   id: string;
@@ -33,10 +40,12 @@ export interface Category {
   name: string;
   description?: string;
   parent_id?: string;
-  status: string;
+  status: CategoryStatus;
   created_at: string;
   updated_at: string;
 }
+
+export type SupplierStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface Supplier {
   id: string;
@@ -47,7 +56,7 @@ export interface Supplier {
   phone?: string;
   email?: string;
   contact_person?: string;
-  status: string;
+  status: SupplierStatus;
   created_at: string;
   updated_at: string;
 }
@@ -61,12 +70,14 @@ export interface Stock {
   updated_at: string;
 }
 
+export type MovementType = 'RECEIPT' | 'ISSUE' | 'TRANSFER' | 'RETURN' | 'ADJUSTMENT' | 'INVENTORY_ADJUSTMENT';
+
 export interface StockMovement {
   id: string;
   movement_number: string;
   article_id: string;
   quantity: number;
-  movement_type: string;
+  movement_type: MovementType;
   user_id: string;
   site_id?: string;
   warehouse_id?: string;
@@ -82,4 +93,34 @@ export interface StockMovement {
 export interface AuthResponse {
   access_token: string;
   token_type: string;
+}
+
+export interface DashboardKPIs {
+  total_articles: number;
+  total_stock: number;
+  critical_stock: number;
+  low_stock: number;
+  pending_requests: number;
+  today_receipts: number;
+  today_issues: number;
+  today_transfers: number;
+}
+
+export interface DashboardData {
+  kpis: DashboardKPIs;
+  movements_today: Record<string, number>;
+  critical: Array<{
+    article_id: string;
+    quantity: number;
+    minimum_stock: number;
+  }>;
+  recent_activity: Array<{
+    id: string;
+    movement_number: string;
+    movement_type: string;
+    article_id: string;
+    quantity: number;
+    user_id: string;
+    created_at: string;
+  }>;
 }

@@ -12,6 +12,7 @@ from app.models.stock import Stock
 from app.models.stock_movement import StockMovement, MovementType
 from app.utils.deps import check_permission
 from app.services.audit import write_audit
+from app.services import notify_inventory_completed
 from datetime import datetime
 
 router = APIRouter()
@@ -175,6 +176,11 @@ def validate_inventory(
     inv.validated_by = current_user.id
     inv.validated_at = datetime.utcnow()
     write_audit(db, user_id=current_user.id, action="VALIDATE_INVENTORY", entity="Inventory", entity_id=inv.id)
+    
+    # Notify responsible user about inventory completion
+    if inv.responsible_id:
+        notify_inventory_completed(db, inv.responsible_id, inv.inventory_number)
+    
     db.commit()
     db.refresh(inv)
     return inv

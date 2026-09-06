@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { stockService } from '../services/stock';
-import { StockMovement } from '../types';
+import { StockMovement, MovementType } from '../types';
+
+type BadgeColor = 'success' | 'danger' | 'info' | 'warning' | 'secondary' | 'dark';
 
 const Movements: React.FC = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadMovements();
@@ -12,17 +15,20 @@ const Movements: React.FC = () => {
 
   const loadMovements = async () => {
     try {
+      setError(null);
       const data = await stockService.getMovements();
       setMovements(data);
-    } catch (error) {
-      console.error('Error loading movements:', error);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load movements';
+      setError(message);
+      console.error('Error loading movements:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const getMovementBadge = (type: string) => {
-    const colors: { [key: string]: string } = {
+  const getMovementBadge = (type: MovementType): BadgeColor => {
+    const colors: Record<MovementType, BadgeColor> = {
       RECEIPT: 'success',
       ISSUE: 'danger',
       TRANSFER: 'info',
@@ -35,6 +41,14 @@ const Movements: React.FC = () => {
 
   if (loading) {
     return <div className="text-center py-5">Loading movements...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="alert alert-danger" role="alert">
+        {error}
+      </div>
+    );
   }
 
   return (

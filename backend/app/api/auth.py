@@ -4,10 +4,12 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.core.security import verify_password, create_access_token, decode_access_token
 from app.models.user import User
+from app.models.user_permission import UserPermission
+from app.models.permission import Permission
 from app.schemas.user import Token, User as UserSchema
 from datetime import timedelta
 from app.core.config import settings
-from typing import Optional
+from typing import Optional, List
 
 router = APIRouter()
 security = HTTPBearer()
@@ -77,6 +79,20 @@ def login(
 @router.get("/me", response_model=UserSchema)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/me/permissions")
+def read_user_permissions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    permissions = (
+        db.query(Permission.name)
+        .join(UserPermission, UserPermission.permission_id == Permission.id)
+        .filter(UserPermission.user_id == current_user.id)
+        .all()
+    )
+    return {"permissions": [p[0] for p in permissions]}
 
 
 __all__ = ["get_current_user"]

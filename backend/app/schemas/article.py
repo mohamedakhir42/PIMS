@@ -16,6 +16,7 @@ class ArticleBase(BaseModel):
     stock_max: Optional[int] = None
     reorder_point: Optional[int] = None
     main_supplier_id: Optional[UUID] = None
+    barcode: Optional[str] = None
     image_url: Optional[str] = None
     status: ArticleStatus = ArticleStatus.ACTIVE
 
@@ -34,6 +35,7 @@ class ArticleUpdate(BaseModel):
     stock_max: Optional[int] = None
     reorder_point: Optional[int] = None
     main_supplier_id: Optional[UUID] = None
+    barcode: Optional[str] = None
     image_url: Optional[str] = None
     status: Optional[ArticleStatus] = None
 

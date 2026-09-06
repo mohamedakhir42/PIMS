@@ -8,6 +8,7 @@ from app.models.category import Category as CategoryModel
 from app.schemas.category import CategoryCreate, CategoryUpdate, Category
 from app.utils.deps import check_permission
 from app.models.user import User
+from app.services.audit import write_audit
 
 
 router = APIRouter()
@@ -80,6 +81,18 @@ def create_category(
     db_category = CategoryModel(**category.dict())
 
     db.add(db_category)
+    db.flush()
+
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="CREATE_CATEGORY",
+        entity="Category",
+        entity_id=db_category.id,
+        new_values={"code": db_category.code, "name": db_category.name},
+    )
+
     db.commit()
     db.refresh(db_category)
 
@@ -107,9 +120,21 @@ def update_category(
         )
 
     update_data = category.dict(exclude_unset=True)
+    old_values = {field: getattr(db_category, field) for field in update_data.keys()}
 
     for field, value in update_data.items():
         setattr(db_category, field, value)
+
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="UPDATE_CATEGORY",
+        entity="Category",
+        entity_id=db_category.id,
+        old_values=old_values,
+        new_values=update_data,
+    )
 
     db.commit()
     db.refresh(db_category)

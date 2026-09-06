@@ -8,6 +8,7 @@ from app.models.supplier import Supplier as SupplierModel
 from app.schemas.supplier import SupplierCreate, SupplierUpdate, Supplier
 from app.utils.deps import check_permission
 from app.models.user import User
+from app.services.audit import write_audit
 
 
 router = APIRouter()
@@ -76,6 +77,18 @@ def create_supplier(
     db_supplier = SupplierModel(**supplier.dict())
 
     db.add(db_supplier)
+    db.flush()
+
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="CREATE_SUPPLIER",
+        entity="Supplier",
+        entity_id=db_supplier.id,
+        new_values={"code": db_supplier.code, "name": db_supplier.name},
+    )
+
     db.commit()
     db.refresh(db_supplier)
 
@@ -102,9 +115,21 @@ def update_supplier(
         )
 
     update_data = supplier.dict(exclude_unset=True)
+    old_values = {field: getattr(db_supplier, field) for field in update_data.keys()}
 
     for field, value in update_data.items():
         setattr(db_supplier, field, value)
+
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="UPDATE_SUPPLIER",
+        entity="Supplier",
+        entity_id=db_supplier.id,
+        old_values=old_values,
+        new_values=update_data,
+    )
 
     db.commit()
     db.refresh(db_supplier)

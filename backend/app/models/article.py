@@ -27,6 +27,7 @@ class Article(Base):
     stock_max = Column(Integer, nullable=True)
     reorder_point = Column(Integer, nullable=True)
     main_supplier_id = Column(UUID(as_uuid=True), ForeignKey("suppliers.id"), nullable=True)
+    barcode = Column(String(50), nullable=True, unique=True, index=True)
     image_url = Column(String(500), nullable=True)
     status = Column(SQLEnum(ArticleStatus), default=ArticleStatus.ACTIVE)
     created_at = Column(DateTime, default=datetime.utcnow)

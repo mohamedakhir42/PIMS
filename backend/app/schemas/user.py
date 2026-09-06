@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 from uuid import UUID
+
 from app.models.user import UserStatus
 
 
@@ -34,7 +35,8 @@ class UserInDB(UserBase):
 
 
 class User(UserInDB):
-    pass
+    role_name: Optional[str] = None
+    permissions: List[str] = []
 
 
 class Token(BaseModel):

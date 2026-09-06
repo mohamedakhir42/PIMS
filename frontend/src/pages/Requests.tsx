@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { requestsService } from '../services/requests';
 import { articleService } from '../services/articles';
+import Modal from '../components/Modal';
 
 export default function Requests() {
   const [rows, setRows] = useState<any[]>([]);
@@ -52,11 +53,12 @@ export default function Requests() {
   };
 
   const handleApprove = async (id: string) => {
-    if (confirm('Are you sure you want to approve this request?')) {
-      await requestsService.approve(id);
-      load();
-    }
+    await requestsService.approve(id);
+    load();
   };
+
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [approveRequestId, setApproveRequestId] = useState<string | null>(null);
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
@@ -113,7 +115,7 @@ export default function Requests() {
                   <td>
                     {r.status === 'PENDING_APPROVAL' && (
                       <>
-                        <button className="btn btn-sm btn-outline-success me-1" onClick={() => handleApprove(r.id)}>Approve</button>
+                        <button className="btn btn-sm btn-outline-success me-1" onClick={() => { setApproveRequestId(r.id); setShowApproveModal(true); }}>Approve</button>
                         <button className="btn btn-sm btn-outline-danger" onClick={() => { setSelectedRequest(r); setRejectReason(''); }}>Reject</button>
                       </>
                     )}
@@ -128,94 +130,93 @@ export default function Requests() {
         </div>
       </div>
 
-      {showModal && (
-        <div className="modal show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">New Stock Request</h5>
-                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-              </div>
-              <form onSubmit={handleSubmit}>
-                <div className="modal-body">
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Service</label>
-                      <input type="text" className="form-control" value={formData.service} onChange={e => setFormData({ ...formData, service: e.target.value })} required />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Priority</label>
-                      <select className="form-select" value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
-                        <option value="LOW">Low</option>
-                        <option value="NORMAL">Normal</option>
-                        <option value="HIGH">High</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Reason</label>
-                    <textarea className="form-control" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} rows={2} required></textarea>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Items</label>
-                    {formData.items.map((item, index) => (
-                      <div key={index} className="row mb-2 align-items-end">
-                        <div className="col-md-6">
-                          <select className="form-select" value={item.article_id} onChange={e => updateItem(index, 'article_id', e.target.value)} required>
-                            <option value="">Select Article</option>
-                            {articles.map(a => (
-                              <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-3">
-                          <input type="number" className="form-control" placeholder="Quantity" value={item.quantity} onChange={e => updateItem(index, 'quantity', parseInt(e.target.value))} min={1} required />
-                        </div>
-                        <div className="col-md-3">
-                          {formData.items.length > 1 && (
-                            <button type="button" className="btn btn-outline-danger w-100" onClick={() => removeItem(index)}>Remove</button>
-                          )}
-                        </div>
-                      </div>
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        title="New Stock Request"
+        size="lg"
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="row mb-3">
+            <div className="col-md-6">
+              <label className="form-label">Service</label>
+              <input type="text" className="form-control" value={formData.service} onChange={e => setFormData({ ...formData, service: e.target.value })} required />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label">Priority</label>
+              <select className="form-select" value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
+                <option value="LOW">Low</option>
+                <option value="NORMAL">Normal</option>
+                <option value="HIGH">High</option>
+              </select>
+            </div>
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Reason</label>
+            <textarea className="form-control" value={formData.reason} onChange={e => setFormData({ ...formData, reason: e.target.value })} rows={2} required></textarea>
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Items</label>
+            {formData.items.map((item, index) => (
+              <div key={index} className="row mb-2 align-items-end">
+                <div className="col-md-6">
+                  <select className="form-select" value={item.article_id} onChange={e => updateItem(index, 'article_id', e.target.value)} required>
+                    <option value="">Select Article</option>
+                    {articles.map(a => (
+                      <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
                     ))}
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addItem}>+ Add Item</button>
-                  </div>
+                  </select>
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Submit Request</button>
+                <div className="col-md-3">
+                  <input type="number" className="form-control" placeholder="Quantity" value={item.quantity} onChange={e => updateItem(index, 'quantity', parseInt(e.target.value))} min={1} required />
                 </div>
-              </form>
-            </div>
+                <div className="col-md-3">
+                  {formData.items.length > 1 && (
+                    <button type="button" className="btn btn-outline-danger w-100" onClick={() => removeItem(index)}>Remove</button>
+                  )}
+                </div>
+              </div>
+            ))}
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addItem}>+ Add Item</button>
           </div>
-        </div>
-      )}
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Submit Request</button>
+          </div>
+        </form>
+      </Modal>
 
-      {selectedRequest && (
-        <div className="modal show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">{selectedRequest.status === 'REJECTED' ? 'Rejection Reason' : 'Reject Request'}</h5>
-                <button type="button" className="btn-close" onClick={() => { setSelectedRequest(null); setRejectReason(''); }}></button>
-              </div>
-              <div className="modal-body">
-                {selectedRequest.status === 'REJECTED' ? (
-                  <p>{selectedRequest.rejection_reason}</p>
-                ) : (
-                  <textarea className="form-control" value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Please provide a reason for rejection..." required></textarea>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => { setSelectedRequest(null); setRejectReason(''); }}>Close</button>
-                {selectedRequest.status !== 'REJECTED' && (
-                  <button type="button" className="btn btn-danger" onClick={handleReject}>Reject</button>
-                )}
-              </div>
-            </div>
-          </div>
+      <Modal
+        show={showApproveModal}
+        onHide={() => { setShowApproveModal(false); setApproveRequestId(null); }}
+        title="Approve Request"
+        size="sm"
+      >
+        <p>Are you sure you want to approve this request?</p>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={() => { setShowApproveModal(false); setApproveRequestId(null); }}>Cancel</button>
+          <button className="btn btn-success" onClick={() => { if (approveRequestId) { handleApprove(approveRequestId); setShowApproveModal(false); setApproveRequestId(null); } }}>Confirm Approval</button>
         </div>
-      )}
+      </Modal>
+
+      <Modal
+        show={!!selectedRequest}
+        onHide={() => { setSelectedRequest(null); setRejectReason(''); }}
+        title={selectedRequest?.status === 'REJECTED' ? 'Rejection Reason' : 'Reject Request'}
+        size="sm"
+      >
+        {selectedRequest?.status === 'REJECTED' ? (
+          <p>{selectedRequest.rejection_reason}</p>
+        ) : (
+          <>
+            <textarea className="form-control" value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Please provide a reason for rejection..." required></textarea>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => { setSelectedRequest(null); setRejectReason(''); }}>Cancel</button>
+              <button className="btn btn-danger" onClick={handleReject}>Reject</button>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

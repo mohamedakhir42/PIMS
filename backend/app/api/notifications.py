@@ -16,9 +16,10 @@ def list_notifications(
         Notification.user_id == current_user.id
     ).order_by(Notification.created_at.desc()).limit(100).all()
 
-@router.patch("/{notification_id}/read")
-def mark_read(
+@router.patch("/{notification_id}")
+def update_notification(
     notification_id,
+    data: dict,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -28,6 +29,7 @@ def mark_read(
     if not n:
         from fastapi import HTTPException
         raise HTTPException(404, "Notification not found")
-    n.is_read = True
+    if "status" in data:
+        n.is_read = data["status"] == "READ"
     db.commit()
     return n

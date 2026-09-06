@@ -21,6 +21,15 @@ export const authService = {
     return response.data;
   },
 
+  async hasPermission(permission: string): Promise<boolean> {
+    try {
+      const response = await api.get<{ permissions: string[] }>('/auth/me/permissions');
+      return response.data.permissions.includes(permission);
+    } catch (error) {
+      return false;
+    }
+  },
+
   logout(): void {
     localStorage.removeItem('token');
   },

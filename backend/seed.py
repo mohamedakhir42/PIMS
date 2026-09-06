@@ -49,6 +49,7 @@ def seed_database():
             {"name": "INVENTORY_READ", "description": "Read physical inventories"},
             {"name": "INVENTORY_CREATE", "description": "Create physical inventories"},
             {"name": "INVENTORY_VALIDATE", "description": "Validate physical inventories"},
+            {"name": "USERS_DISABLE", "description": "USERS_DISABLE"},
         ]
         
         permissions = []

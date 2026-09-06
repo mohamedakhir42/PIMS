@@ -1,5 +1,24 @@
 from fastapi import APIRouter
-from app.api import auth, articles, categories, suppliers, stock, users, roles, requests, inventories, notifications, reports, audit_logs
+from app.api import (
+    auth,
+    articles,
+    categories,
+    suppliers,
+    stock,
+    users,
+    roles,
+    requests,
+    inventories,
+    notifications,
+    reports,
+    audit_logs,
+    user_permissions,
+    attachments,
+    sites,
+    warehouses,
+    zones,
+    locations,
+)
 
 api_router = APIRouter()
 
@@ -15,3 +34,13 @@ api_router.include_router(inventories.router, prefix="/inventories", tags=["Inve
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["Audit Logs"])
+api_router.include_router(
+    user_permissions.router,
+    prefix="/user-permissions",
+    tags=["User Permissions"],
+)
+api_router.include_router(attachments.router, prefix="/attachments", tags=["Attachments"])
+api_router.include_router(sites.router, prefix="/sites", tags=["Sites"])
+api_router.include_router(warehouses.router, prefix="/warehouses", tags=["Warehouses"])
+api_router.include_router(zones.router, prefix="/zones", tags=["Zones"])
+api_router.include_router(locations.router, prefix="/locations", tags=["Locations"])

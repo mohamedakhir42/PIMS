@@ -1,17 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Outlet,
-  Link,
-  useNavigate,
-  useLocation,
-} from 'react-router-dom';
-
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { authService } from '../services/auth';
+import { 
+  LayoutDashboard, 
+  Package, 
+  Tag, 
+  ClipboardList, 
+  Building2, 
+  Warehouse, 
+  MapPin, 
+  Map, 
+  Users, 
+  Settings,
+  LogOut,
+  Menu,
+  X
+} from 'lucide-react';
 
 interface MenuItem {
   path?: string;
   label?: string;
-  icon?: string;
+  icon?: React.ReactNode;
   header?: string;
   permission?: string;
   adminOnly?: boolean;
@@ -60,7 +69,7 @@ const Layout: React.FC = () => {
     {
       path: '/dashboard',
       label: 'Dashboard',
-      icon: '📊',
+      icon: <LayoutDashboard size={20} />,
       permission: 'DASHBOARD_READ',
     },
 
@@ -71,21 +80,21 @@ const Layout: React.FC = () => {
     {
       path: '/inventory/articles',
       label: 'Articles',
-      icon: '📦',
+      icon: <Package size={20} />,
       permission: 'ARTICLES_READ',
     },
 
     {
       path: '/inventory/stock',
       label: 'Stock',
-      icon: '📋',
+      icon: <ClipboardList size={20} />,
       permission: 'STOCK_READ',
     },
 
     {
       path: '/categories',
       label: 'Categories',
-      icon: '🏷️',
+      icon: <Tag size={20} />,
       permission: 'CATEGORIES_READ',
     },
 
@@ -96,14 +105,14 @@ const Layout: React.FC = () => {
     {
       path: '/movements',
       label: 'Movements',
-      icon: '🔄',
+      icon: <ClipboardList size={20} />,
       permission: 'MOVEMENTS_READ',
     },
 
     {
       path: '/requests',
       label: 'Requests',
-      icon: '📝',
+      icon: <ClipboardList size={20} />,
       permission: 'REQUEST_READ',
     },
 
@@ -114,7 +123,7 @@ const Layout: React.FC = () => {
     {
       path: '/inventories',
       label: 'Physical Inventory',
-      icon: '📊',
+      icon: <LayoutDashboard size={20} />,
       permission: 'INVENTORY_READ',
     },
 
@@ -125,8 +134,40 @@ const Layout: React.FC = () => {
     {
       path: '/suppliers',
       label: 'Suppliers',
-      icon: '🏭',
+      icon: <Building2 size={20} />,
       permission: 'SUPPLIERS_READ',
+    },
+
+    {
+      header: 'ORGANIZATION',
+    },
+
+    {
+      path: '/organization/sites',
+      label: 'Sites',
+      icon: <Building2 size={20} />,
+      permission: 'SITES_READ',
+    },
+
+    {
+      path: '/organization/warehouses',
+      label: 'Warehouses',
+      icon: <Warehouse size={20} />,
+      permission: 'WAREHOUSES_READ',
+    },
+
+    {
+      path: '/organization/zones',
+      label: 'Zones',
+      icon: <MapPin size={20} />,
+      permission: 'ZONES_READ',
+    },
+
+    {
+      path: '/organization/locations',
+      label: 'Locations',
+      icon: <Map size={20} />,
+      permission: 'LOCATIONS_READ',
     },
 
     {
@@ -136,35 +177,35 @@ const Layout: React.FC = () => {
     {
       path: '/users',
       label: 'Users',
-      icon: '👥',
+      icon: <Users size={20} />,
       permission: 'USERS_READ',
     },
 
     {
       path: '/permissions',
-      label: 'Access Management',
-      icon: '🔐',
+      label: 'Permissions',
+      icon: <Settings size={20} />,
       adminOnly: true,
     },
 
     {
       path: '/reports',
       label: 'Reports',
-      icon: '📈',
+      icon: <LayoutDashboard size={20} />,
       permission: 'REPORT_READ',
     },
 
     {
       path: '/audit-logs',
       label: 'Audit Logs',
-      icon: '📜',
+      icon: <ClipboardList size={20} />,
       permission: 'AUDIT_READ',
     },
 
     {
       path: '/notifications',
       label: 'Notifications',
-      icon: '🔔',
+      icon: <Settings size={20} />,
     },
   ];
 
@@ -377,9 +418,10 @@ const Layout: React.FC = () => {
 
           <button
             onClick={handleLogout}
-            className="btn btn-outline-light btn-sm w-100"
+            className="btn btn-outline-light btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
           >
-            🚪 Logout
+            <LogOut size={16} />
+            <span className={!sidebarOpen ? 'd-none' : ''}>Logout</span>
           </button>
 
         </div>
@@ -397,7 +439,7 @@ const Layout: React.FC = () => {
               setSidebarOpen(!sidebarOpen)
             }
           >
-            ☰
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
           <div className="d-flex align-items-center gap-3">

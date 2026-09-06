@@ -24,6 +24,10 @@ from app.schemas.requests import (
 )
 
 from app.utils.deps import check_permission
+from app.services import notify_new_request, notify_request_approved, notify_request_rejected
+from app.models.stock import Stock
+from app.models.stock_movement import StockMovement, MovementType
+from app.services.audit import write_audit
 
 
 class RejectRequest(BaseModel):
@@ -147,6 +151,21 @@ def create_request(
     db.commit()
     db.refresh(db_request)
 
+    # Notify approvers about new request
+    from app.models.role import Role
+    from app.models.user_permission import UserPermission
+    from app.models.permission import Permission
+    
+    # Find users with REQUEST_APPROVE permission
+    approvers = db.query(User).join(UserPermission).join(Permission).filter(
+        Permission.name == "REQUEST_APPROVE"
+    ).all()
+    
+    for approver in approvers:
+        notify_new_request(db, approver.id, db_request.request_number)
+    
+    db.commit()
+
     return db_request
 
 
@@ -233,6 +252,8 @@ def approve_request(
     db_request.approved_by = current_user.id
     db_request.approved_at = datetime.utcnow()
 
+    # Notify requester about approval
+    notify_request_approved(db, db_request.requester_id, db_request.request_number)
     db.commit()
     db.refresh(db_request)
 
@@ -276,7 +297,129 @@ def reject_request(
     db_request.approved_at = datetime.utcnow()
     db_request.rejection_reason = reject_data.rejection_reason
 
+    # Notify requester about rejection
+    notify_request_rejected(db, db_request.requester_id, db_request.request_number, reject_data.rejection_reason)
     db.commit()
     db.refresh(db_request)
 
     return db_request
+
+
+# ============================================================
+# ISSUE STOCK FROM APPROVED REQUEST
+# ============================================================
+
+class IssueRequest(BaseModel):
+    location_id: uuid.UUID
+    warehouse_id: uuid.UUID
+    site_id: uuid.UUID
+
+
+@router.post(
+    "/{request_id}/issue",
+    response_model=StockRequest,
+)
+def issue_request(
+    request_id: uuid.UUID,
+    issue_data: IssueRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("STOCK_ISSUE")),
+):
+    db_request = (
+        db.query(StockRequestModel)
+        .filter(StockRequestModel.id == request_id)
+        .first()
+    )
+
+    if not db_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    if db_request.status != RequestStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request must be approved before issuing stock",
+        )
+
+    try:
+        # Get request items
+        request_items = (
+            db.query(StockRequestItem)
+            .filter(StockRequestItem.request_id == db_request.id)
+            .all()
+        )
+
+        # Process each item
+        for item in request_items:
+            # Find stock at the specified location
+            stock = (
+                db.query(Stock)
+                .filter(
+                    Stock.article_id == item.article_id,
+                    Stock.location_id == issue_data.location_id
+                )
+                .first()
+            )
+
+            if not stock:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"No stock found for article at specified location",
+                )
+
+            if stock.quantity < item.quantity:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Insufficient stock for article. Available: {stock.quantity}, Requested: {item.quantity}",
+                )
+
+            # Create stock movement
+            movement_number = f"MOV-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            movement = StockMovement(
+                movement_number=movement_number,
+                article_id=item.article_id,
+                quantity=item.quantity,
+                movement_type=MovementType.ISSUE,
+                user_id=current_user.id,
+                location_id=issue_data.location_id,
+                warehouse_id=issue_data.warehouse_id,
+                site_id=issue_data.site_id,
+                reason=f"Stock Request {db_request.request_number}",
+                reference=db_request.request_number,
+            )
+            db.add(movement)
+
+            # Update stock quantity
+            stock.quantity -= item.quantity
+
+        # Update request status
+        db_request.status = RequestStatus.ISSUED
+        db_request.issued_by = current_user.id
+        db_request.issued_at = datetime.utcnow()
+
+        # Audit logging
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="ISSUE_REQUEST",
+            entity="StockRequest",
+            entity_id=db_request.id,
+            new_values={"request_number": db_request.request_number, "status": "ISSUED"},
+        )
+
+        db.commit()
+        db.refresh(db_request)
+
+        return db_request
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error issuing stock: {str(e)}",
+        )

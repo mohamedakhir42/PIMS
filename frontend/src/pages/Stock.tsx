@@ -2,9 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { stockService } from '../services/stock';
 import { Stock } from '../types';
 
+type StockStatus = 'CRITICAL' | 'LOW' | 'NORMAL';
+
+interface StockStatusInfo {
+  label: StockStatus;
+  color: 'danger' | 'warning' | 'success';
+}
+
 const StockPage: React.FC = () => {
   const [stock, setStock] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadStock();
@@ -12,16 +20,19 @@ const StockPage: React.FC = () => {
 
   const loadStock = async () => {
     try {
+      setError(null);
       const data = await stockService.getStock();
       setStock(data);
-    } catch (error) {
-      console.error('Error loading stock:', error);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load stock';
+      setError(message);
+      console.error('Error loading stock:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStockStatus = (quantity: number) => {
+  const getStockStatus = (quantity: number): StockStatusInfo => {
     if (quantity <= 0) return { label: 'CRITICAL', color: 'danger' };
     if (quantity < 10) return { label: 'LOW', color: 'warning' };
     return { label: 'NORMAL', color: 'success' };
@@ -29,6 +40,14 @@ const StockPage: React.FC = () => {
 
   if (loading) {
     return <div className="text-center py-5">Loading stock...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="alert alert-danger" role="alert">
+        {error}
+      </div>
+    );
   }
 
   return (

@@ -44,3 +44,22 @@ class User(Base):
     foreign_keys="Inventory.responsible_id"
 )
     audit_logs = relationship("AuditLog", back_populates="user")
+    user_permissions = relationship(
+    "UserPermission",
+    back_populates="user",
+    cascade="all, delete-orphan"
+)
+    @property
+    def role_name(self):
+        return self.role.name if self.role else None
+    @property
+    def permissions(self):
+        """
+        Retourne les permissions directement attribuées
+        à cet utilisateur.
+        """
+        return [
+            user_permission.permission.name
+            for user_permission in self.user_permissions
+            if user_permission.permission
+        ]
