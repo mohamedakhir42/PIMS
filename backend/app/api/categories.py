@@ -5,6 +5,7 @@ import uuid
 
 from app.db.database import get_db
 from app.models.category import Category as CategoryModel
+from app.models.article import Article
 from app.schemas.category import CategoryCreate, CategoryUpdate, Category
 from app.utils.deps import check_permission
 from app.models.user import User
@@ -140,3 +141,66 @@ def update_category(
     db.refresh(db_category)
 
     return db_category
+
+
+# DELETE /categories/{category_id}
+@router.delete("/{category_id}")
+def delete_category(
+    category_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("CATEGORIES_DELETE"))
+):
+    db_category = (
+        db.query(CategoryModel)
+        .filter(CategoryModel.id == category_id)
+        .first()
+    )
+
+    if not db_category:
+        raise HTTPException(
+            status_code=404,
+            detail="Category not found"
+        )
+
+    # Check if category has articles
+    article_count = (
+        db.query(Article)
+        .filter(Article.category_id == category_id)
+        .count()
+    )
+
+    if article_count > 0:
+        # Category has articles - disable instead of delete
+        old_status = db_category.status
+        db_category.status = CategoryModel.CategoryStatus.INACTIVE
+        
+        # Audit logging
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="DISABLE_CATEGORY",
+            entity="Category",
+            entity_id=db_category.id,
+            old_values={"status": old_status},
+            new_values={"status": db_category.status},
+        )
+        
+        db.commit()
+        return {"message": "Category disabled (has articles)"}
+    else:
+        # No articles - can delete
+        old_values = {"code": db_category.code, "name": db_category.name}
+        
+        # Audit logging before deletion
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="DELETE_CATEGORY",
+            entity="Category",
+            entity_id=db_category.id,
+            old_values=old_values,
+        )
+        
+        db.delete(db_category)
+        db.commit()
+        return {"message": "Category deleted"}

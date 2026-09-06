@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { articleService } from '../services/articles';
-import { Article, ArticleStatus } from '../types';
+import { categoryService } from '../services/categories';
+import { supplierService } from '../services/suppliers';
+import { Article, ArticleStatus, Category, Supplier } from '../types';
 import BarcodeScanner from '../components/BarcodeScanner';
 import { Camera } from 'lucide-react';
 
@@ -13,9 +15,30 @@ const Articles: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    code: '',
+    reference: '',
+    designation: '',
+    description: '',
+    category_id: '',
+    unit: '',
+    stock_min: 0,
+    stock_max: '',
+    reorder_point: '',
+    main_supplier_id: '',
+    barcode: '',
+    status: ArticleStatus.ACTIVE
+  });
 
   useEffect(() => {
     loadArticles();
+    loadCategories();
+    loadSuppliers();
   }, []);
 
   const loadArticles = async () => {
@@ -29,6 +52,24 @@ const Articles: React.FC = () => {
       console.error('Error loading articles:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const data = await categoryService.getCategories();
+      setCategories(data);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const data = await supplierService.getSuppliers();
+      setSuppliers(data);
+    } catch (err) {
+      console.error('Error loading suppliers:', err);
     }
   };
 
@@ -58,6 +99,81 @@ const Articles: React.FC = () => {
     return colors[status] || 'secondary';
   };
 
+  const handleNewArticle = () => {
+    setEditingArticle(null);
+    setFormData({
+      code: '',
+      reference: '',
+      designation: '',
+      description: '',
+      category_id: '',
+      unit: '',
+      stock_min: 0,
+      stock_max: '',
+      reorder_point: '',
+      main_supplier_id: '',
+      barcode: '',
+      status: ArticleStatus.ACTIVE
+    });
+    setShowModal(true);
+  };
+
+  const handleEditArticle = (article: Article) => {
+    setEditingArticle(article);
+    setFormData({
+      code: article.code,
+      reference: article.reference,
+      designation: article.designation,
+      description: article.description || '',
+      category_id: article.category_id,
+      unit: article.unit,
+      stock_min: article.stock_min,
+      stock_max: article.stock_max?.toString() || '',
+      reorder_point: article.reorder_point?.toString() || '',
+      main_supplier_id: article.main_supplier_id || '',
+      barcode: article.barcode || '',
+      status: article.status
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteArticle = async (article: Article) => {
+    if (!window.confirm(`Are you sure you want to delete article ${article.code}?`)) {
+      return;
+    }
+    try {
+      await articleService.deleteArticle(article.id);
+      loadArticles();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete article';
+      alert(message);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const submitData = {
+        ...formData,
+        stock_max: formData.stock_max ? parseInt(formData.stock_max) : null,
+        reorder_point: formData.reorder_point ? parseInt(formData.reorder_point) : null
+      };
+      if (editingArticle) {
+        await articleService.updateArticle(editingArticle.id, submitData);
+      } else {
+        await articleService.createArticle(submitData);
+      }
+      setShowModal(false);
+      loadArticles();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save article';
+      alert(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-5">Loading articles...</div>;
   }
@@ -79,7 +195,7 @@ const Articles: React.FC = () => {
             <Camera size={16} className="me-2" />
             Scan Barcode
           </button>
-          <button className="btn btn-primary">+ New Article</button>
+          <button className="btn btn-primary" onClick={handleNewArticle}>+ New Article</button>
         </div>
       </div>
 
@@ -142,8 +258,8 @@ const Articles: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <button className="btn btn-sm btn-outline-primary me-1">Edit</button>
-                      <button className="btn btn-sm btn-outline-danger">Delete</button>
+                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleEditArticle(article)}>Edit</button>
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteArticle(article)}>Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -158,6 +274,168 @@ const Articles: React.FC = () => {
           )}
         </div>
       </div>
+
+      {showModal && (
+        <div className="modal show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{editingArticle ? 'Edit Article' : 'New Article'}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="row">
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Code *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.code}
+                        onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                        required
+                        disabled={!!editingArticle}
+                      />
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Reference *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.reference}
+                        onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Designation *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={formData.designation}
+                      onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Description</label>
+                    <textarea
+                      className="form-control"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                  <div className="row">
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Category *</label>
+                      <select
+                        className="form-select"
+                        value={formData.category_id}
+                        onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                        required
+                      >
+                        <option value="">Select Category</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.name} ({cat.code})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Unit *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.unit}
+                        onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                        required
+                        placeholder="e.g., PCS, KG, L"
+                      />
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label">Stock Min *</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={formData.stock_min}
+                        onChange={(e) => setFormData({ ...formData, stock_min: parseInt(e.target.value) || 0 })}
+                        required
+                        min={0}
+                      />
+                    </div>
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label">Stock Max</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={formData.stock_max}
+                        onChange={(e) => setFormData({ ...formData, stock_max: e.target.value })}
+                        min={0}
+                      />
+                    </div>
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label">Reorder Point</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={formData.reorder_point}
+                        onChange={(e) => setFormData({ ...formData, reorder_point: e.target.value })}
+                        min={0}
+                      />
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Main Supplier</label>
+                      <select
+                        className="form-select"
+                        value={formData.main_supplier_id}
+                        onChange={(e) => setFormData({ ...formData, main_supplier_id: e.target.value })}
+                      >
+                        <option value="">Select Supplier</option>
+                        {suppliers.map((sup) => (
+                          <option key={sup.id} value={sup.id}>{sup.name} ({sup.code})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Barcode</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.barcode}
+                        onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Status *</label>
+                    <select
+                      className="form-select"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as ArticleStatus })}
+                      required
+                    >
+                      <option value={ArticleStatus.ACTIVE}>Active</option>
+                      <option value={ArticleStatus.INACTIVE}>Inactive</option>
+                      <option value={ArticleStatus.DISCONTINUED}>Discontinued</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>
+                    {submitting ? 'Saving...' : (editingArticle ? 'Update' : 'Create')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

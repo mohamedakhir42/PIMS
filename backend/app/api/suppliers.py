@@ -5,6 +5,7 @@ import uuid
 
 from app.db.database import get_db
 from app.models.supplier import Supplier as SupplierModel
+from app.models.article import Article
 from app.schemas.supplier import SupplierCreate, SupplierUpdate, Supplier
 from app.utils.deps import check_permission
 from app.models.user import User
@@ -135,3 +136,72 @@ def update_supplier(
     db.refresh(db_supplier)
 
     return db_supplier
+
+
+@router.delete("/{supplier_id}")
+def delete_supplier(
+    supplier_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("SUPPLIERS_DELETE"))
+):
+    db_supplier = (
+        db.query(SupplierModel)
+        .filter(SupplierModel.id == supplier_id)
+        .first()
+    )
+
+    if not db_supplier:
+        raise HTTPException(
+            status_code=404,
+            detail="Supplier not found"
+        )
+
+    # Check if supplier has articles (as main supplier or in article_suppliers)
+    article_count = (
+        db.query(Article)
+        .filter(
+            (Article.main_supplier_id == supplier_id) |
+            (Article.id.in_(
+                db.query(Article.id)
+                .join(Article.suppliers)
+                .filter(SupplierModel.id == supplier_id)
+            ))
+        )
+        .count()
+    )
+
+    if article_count > 0:
+        # Supplier has articles - disable instead of delete
+        old_status = db_supplier.status
+        db_supplier.status = SupplierModel.SupplierStatus.INACTIVE
+        
+        # Audit logging
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="DISABLE_SUPPLIER",
+            entity="Supplier",
+            entity_id=db_supplier.id,
+            old_values={"status": old_status},
+            new_values={"status": db_supplier.status},
+        )
+        
+        db.commit()
+        return {"message": "Supplier disabled (has articles)"}
+    else:
+        # No articles - can delete
+        old_values = {"code": db_supplier.code, "name": db_supplier.name}
+        
+        # Audit logging before deletion
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="DELETE_SUPPLIER",
+            entity="Supplier",
+            entity_id=db_supplier.id,
+            old_values=old_values,
+        )
+        
+        db.delete(db_supplier)
+        db.commit()
+        return {"message": "Supplier deleted"}

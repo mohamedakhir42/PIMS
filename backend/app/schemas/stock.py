@@ -57,4 +57,7 @@ class StockInDB(StockBase):
 
 
 class Stock(StockInDB):
-    pass
+    article_designation: Optional[str] = None
+    article_code: Optional[str] = None
+    location_name: Optional[str] = None
+    location_code: Optional[str] = None

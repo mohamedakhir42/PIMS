@@ -21,4 +21,8 @@ export const categoryService = {
     const response = await api.patch<Category>(`/categories/${id}`, category);
     return response.data;
   },
+
+  async deleteCategory(id: string): Promise<void> {
+    await api.delete(`/categories/${id}`);
+  },
 };

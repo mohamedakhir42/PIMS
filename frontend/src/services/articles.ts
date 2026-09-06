@@ -21,4 +21,8 @@ export const articleService = {
     const response = await api.patch<Article>(`/articles/${id}`, article);
     return response.data;
   },
+
+  async deleteArticle(id: string): Promise<void> {
+    await api.delete(`/articles/${id}`);
+  },
 };

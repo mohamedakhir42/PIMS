@@ -172,7 +172,7 @@ export default function Requests() {
                   <select className="form-select" value={item.article_id} onChange={e => updateItem(index, 'article_id', e.target.value)} required>
                     <option value="">Select Article</option>
                     {articles.map(a => (
-                      <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                      <option key={a.id} value={a.id}>{a.code} - {a.designation}</option>
                     ))}
                   </select>
                 </div>

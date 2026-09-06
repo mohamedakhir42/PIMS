@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { articleService } from '../services/articles';
 import { attachmentsService } from '../services/attachments';
-import { Article } from '../types';
+import { stockService } from '../services/stock';
+import { Article, StockMovement } from '../types';
 
 const ArticleDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,11 +12,14 @@ const ArticleDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
+  const [loadingMovements, setLoadingMovements] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadArticle(id);
       loadAttachments(id);
+      loadStockMovements(id);
     }
   }, [id]);
 
@@ -62,6 +66,50 @@ const ArticleDetail: React.FC = () => {
     } catch (error) {
       console.error('Error deleting attachment:', error);
     }
+  };
+
+  const loadStockMovements = async (articleId: string) => {
+    setLoadingMovements(true);
+    try {
+      const data = await stockService.getMovements();
+      // Filter movements for this article
+      const articleMovements = data.filter(m => m.article_id === articleId);
+      setStockMovements(articleMovements);
+    } catch (error) {
+      console.error('Error loading stock movements:', error);
+    } finally {
+      setLoadingMovements(false);
+    }
+  };
+
+  const handleEdit = () => {
+    navigate(`/articles/${id}/edit`);
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm(`Are you sure you want to delete article ${article?.code}?`)) {
+      return;
+    }
+    try {
+      await articleService.deleteArticle(id);
+      navigate('/articles');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete article';
+      alert(message);
+    }
+  };
+
+  const getMovementTypeBadge = (type: string) => {
+    const colors: { [key: string]: string } = {
+      RECEIPT: 'success',
+      ISSUE: 'danger',
+      TRANSFER: 'info',
+      RETURN: 'warning',
+      ADJUSTMENT: 'secondary',
+      INVENTORY_ADJUSTMENT: 'dark',
+    };
+    return colors[type] || 'secondary';
   };
 
   if (loading) {
@@ -148,8 +196,8 @@ const ArticleDetail: React.FC = () => {
           </div>
 
           <div className="mt-4">
-            <button className="btn btn-primary me-2">Edit Article</button>
-            <button className="btn btn-outline-danger">Delete Article</button>
+            <button className="btn btn-primary me-2" onClick={handleEdit}>Edit Article</button>
+            <button className="btn btn-outline-danger" onClick={handleDelete}>Delete Article</button>
           </div>
         </div>
       </div>
@@ -159,7 +207,44 @@ const ArticleDetail: React.FC = () => {
           <h5 className="card-title mb-0">Stock History</h5>
         </div>
         <div className="card-body">
-          <p className="text-muted">Stock history will be displayed here</p>
+          {loadingMovements ? (
+            <div className="text-center py-3">Loading stock movements...</div>
+          ) : stockMovements.length === 0 ? (
+            <p className="text-muted">No stock movements for this article</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Location</th>
+                    <th>Reference</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockMovements.map((movement) => (
+                    <tr key={movement.id}>
+                      <td>{new Date(movement.created_at).toLocaleString()}</td>
+                      <td>
+                        <span className={`badge bg-${getMovementTypeBadge(movement.movement_type)}`}>
+                          {movement.movement_type}
+                        </span>
+                      </td>
+                      <td className={movement.movement_type === 'ISSUE' ? 'text-danger' : 'text-success'}>
+                        {movement.movement_type === 'ISSUE' ? '-' : '+'}{movement.quantity}
+                      </td>
+                      <td>{movement.location_id || '-'}</td>
+                      <td>{movement.reference || '-'}</td>
+                      <td>{movement.reason || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

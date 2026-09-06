@@ -5,6 +5,7 @@ from typing import List
 from app.db.database import get_db
 from app.models.stock import Stock as StockModel
 from app.models.article import Article
+from app.models.location import Location
 from app.models.stock_movement import (
     StockMovement as StockMovementModel,
     MovementType,
@@ -39,12 +40,30 @@ def get_stock(
 ):
     stock = (
         db.query(StockModel)
+        .join(Article, StockModel.article_id == Article.id)
+        .join(Location, StockModel.location_id == Location.id)
         .offset(skip)
         .limit(limit)
         .all()
     )
 
-    return stock
+    # Manually construct response with readable names
+    result = []
+    for item in stock:
+        result.append({
+            "id": item.id,
+            "article_id": item.article_id,
+            "location_id": item.location_id,
+            "quantity": item.quantity,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+            "article_designation": item.article.designation,
+            "article_code": item.article.code,
+            "location_name": item.location.name,
+            "location_code": item.location.code,
+        })
+
+    return result
 
 
 # ============================================================
@@ -234,6 +253,7 @@ def create_receipt(
             )
 
             db.add(stock)
+            db.flush()
 
         # Audit logging
         write_audit(
@@ -450,6 +470,7 @@ def create_transfer(
                 quantity=movement.quantity,
             )
             db.add(dest_stock)
+            db.flush()
 
         # Audit logging
         write_audit(
@@ -537,6 +558,7 @@ def create_adjustment(
             )
 
             db.add(stock)
+            db.flush()
 
         # Audit logging
         write_audit(
@@ -629,6 +651,7 @@ def create_return(
             )
 
             db.add(stock)
+            db.flush()
 
         # Audit logging
         write_audit(

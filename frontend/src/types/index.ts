@@ -12,7 +12,11 @@ export interface User {
   updated_at: string;
 }
 
-export type ArticleStatus = 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED';
+export enum ArticleStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  DISCONTINUED = 'DISCONTINUED',
+}
 
 export interface Article {
   id: string;
@@ -69,6 +73,10 @@ export interface Stock {
   quantity: number;
   created_at: string;
   updated_at: string;
+  article_designation?: string;
+  article_code?: string;
+  location_name?: string;
+  location_code?: string;
 }
 
 export type MovementType = 'RECEIPT' | 'ISSUE' | 'TRANSFER' | 'RETURN' | 'ADJUSTMENT' | 'INVENTORY_ADJUSTMENT';

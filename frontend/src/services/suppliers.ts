@@ -21,4 +21,8 @@ export const supplierService = {
     const response = await api.patch<Supplier>(`/suppliers/${id}`, supplier);
     return response.data;
   },
+
+  async deleteSupplier(id: string): Promise<void> {
+    await api.delete(`/suppliers/${id}`);
+  },
 };
