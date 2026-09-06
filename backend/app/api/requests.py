@@ -118,7 +118,7 @@ def create_request(
         service=request_data.service,
         priority=request_data.priority,
         reason=request_data.reason,
-        status=RequestStatus.PENDING_APPROVAL,
+        status=RequestStatus.DRAFT,
     )
 
     db.add(db_request)
@@ -155,16 +155,132 @@ def create_request(
     from app.models.role import Role
     from app.models.user_permission import UserPermission
     from app.models.permission import Permission
+    from app.models.role_permission import RolePermission
     
-    # Find users with REQUEST_APPROVE permission
-    approvers = db.query(User).join(UserPermission).join(Permission).filter(
+    # Find users with REQUEST_APPROVE permission (via role or direct)
+    approvers_query = db.query(User).distinct()
+    
+    # Users with role having REQUEST_APPROVE permission
+    role_approvers = approvers_query.join(Role).join(RolePermission).join(Permission).filter(
         Permission.name == "REQUEST_APPROVE"
     ).all()
+    
+    # Users with direct REQUEST_APPROVE permission
+    direct_approvers = db.query(User).join(UserPermission).join(Permission).filter(
+        Permission.name == "REQUEST_APPROVE"
+    ).all()
+    
+    # Combine and deduplicate
+    approvers = list({u.id: u for u in role_approvers + direct_approvers}.values())
     
     for approver in approvers:
         notify_new_request(db, approver.id, db_request.request_number)
     
     db.commit()
+
+    return db_request
+
+
+# ============================================================
+# SUBMIT REQUEST
+# ============================================================
+
+@router.post(
+    "/{request_id}/submit",
+    response_model=StockRequest,
+)
+def submit_request(
+    request_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("REQUEST_CREATE")),
+):
+    db_request = (
+        db.query(StockRequestModel)
+        .filter(StockRequestModel.id == request_id)
+        .first()
+    )
+
+    if not db_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    if db_request.status != RequestStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only draft requests can be submitted",
+        )
+
+    db_request.status = RequestStatus.SUBMITTED
+    db.commit()
+    db.refresh(db_request)
+
+    # Notify approvers about new request
+    from app.models.role import Role
+    from app.models.user_permission import UserPermission
+    from app.models.permission import Permission
+    from app.models.role_permission import RolePermission
+    
+    # Find users with REQUEST_APPROVE permission (via role or direct)
+    approvers_query = db.query(User).distinct()
+    
+    # Users with role having REQUEST_APPROVE permission
+    role_approvers = approvers_query.join(Role).join(RolePermission).join(Permission).filter(
+        Permission.name == "REQUEST_APPROVE"
+    ).all()
+    
+    # Users with direct REQUEST_APPROVE permission
+    direct_approvers = db.query(User).join(UserPermission).join(Permission).filter(
+        Permission.name == "REQUEST_APPROVE"
+    ).all()
+    
+    # Combine and deduplicate
+    approvers = list({u.id: u for u in role_approvers + direct_approvers}.values())
+    
+    for approver in approvers:
+        notify_new_request(db, approver.id, db_request.request_number)
+    
+    db.commit()
+
+    return db_request
+
+
+# ============================================================
+# CANCEL REQUEST
+# ============================================================
+
+@router.post(
+    "/{request_id}/cancel",
+    response_model=StockRequest,
+)
+def cancel_request(
+    request_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("REQUEST_CREATE")),
+):
+    db_request = (
+        db.query(StockRequestModel)
+        .filter(StockRequestModel.id == request_id)
+        .first()
+    )
+
+    if not db_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    # Can only cancel DRAFT or SUBMITTED requests
+    if db_request.status not in [RequestStatus.DRAFT, RequestStatus.SUBMITTED]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only draft or submitted requests can be cancelled",
+        )
+
+    db_request.status = RequestStatus.CANCELLED
+    db.commit()
+    db.refresh(db_request)
 
     return db_request
 

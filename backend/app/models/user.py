@@ -55,11 +55,21 @@ class User(Base):
     @property
     def permissions(self):
         """
-        Retourne les permissions directement attribuées
-        à cet utilisateur.
+        Retourne toutes les permissions de l'utilisateur:
+        - Permissions héritées du rôle
+        - Permissions directement attribuées
         """
-        return [
+        all_permissions = set()
+        
+        # Permissions du rôle
+        if self.role and self.role.permissions:
+            all_permissions.update(perm.name for perm in self.role.permissions)
+        
+        # Permissions directes
+        all_permissions.update(
             user_permission.permission.name
             for user_permission in self.user_permissions
             if user_permission.permission
-        ]
+        )
+        
+        return list(all_permissions)

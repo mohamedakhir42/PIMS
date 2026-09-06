@@ -86,13 +86,22 @@ def read_user_permissions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    permissions = (
-        db.query(Permission.name)
-        .join(UserPermission, UserPermission.permission_id == Permission.id)
-        .filter(UserPermission.user_id == current_user.id)
-        .all()
-    )
-    return {"permissions": [p[0] for p in permissions]}
+    # Get all permissions: role permissions + direct user permissions
+    all_permissions = set()
+    
+    # Role permissions
+    if current_user.role and current_user.role.permissions:
+        all_permissions.update(perm.name for perm in current_user.role.permissions)
+    
+    # Direct user permissions
+    if current_user.user_permissions:
+        all_permissions.update(
+            user_permission.permission.name
+            for user_permission in current_user.user_permissions
+            if user_permission.permission
+        )
+    
+    return {"permissions": list(all_permissions)}
 
 
 __all__ = ["get_current_user"]

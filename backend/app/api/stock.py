@@ -201,60 +201,67 @@ def create_receipt(
         f"REC-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
     )
 
-    # IMPORTANT :
-    # StockMovementModel = modèle SQLAlchemy
-    # StockMovement = schema Pydantic
-    db_movement = StockMovementModel(
-        movement_number=movement_number,
-        user_id=current_user.id,
-        **movement.dict(),
-    )
-
-    db.add(db_movement)
-
-    stock = (
-        db.query(StockModel)
-        .filter(
-            StockModel.article_id == movement.article_id,
-            StockModel.location_id == movement.location_id,
-        )
-        .first()
-    )
-
-    if stock:
-        old_quantity = stock.quantity
-        stock.quantity += movement.quantity
-    else:
-        old_quantity = 0
-        stock = StockModel(
-            article_id=movement.article_id,
-            location_id=movement.location_id,
-            quantity=movement.quantity,
+    try:
+        # IMPORTANT :
+        # StockMovementModel = modèle SQLAlchemy
+        # StockMovement = schema Pydantic
+        db_movement = StockMovementModel(
+            movement_number=movement_number,
+            user_id=current_user.id,
+            **movement.dict(),
         )
 
-        db.add(stock)
+        db.add(db_movement)
 
-    # Audit logging
-    write_audit(
-        db,
-        user_id=current_user.id,
-        action="STOCK_RECEIPT",
-        entity="Stock",
-        entity_id=stock.id,
-        old_values={"quantity": old_quantity},
-        new_values={"quantity": stock.quantity},
-        details=f"Receipt of {movement.quantity} units for article {movement.article_id}",
-    )
+        stock = (
+            db.query(StockModel)
+            .filter(
+                StockModel.article_id == movement.article_id,
+                StockModel.location_id == movement.location_id,
+            )
+            .first()
+        )
 
-    db.commit()
-    db.refresh(db_movement)
+        if stock:
+            old_quantity = stock.quantity
+            stock.quantity += movement.quantity
+        else:
+            old_quantity = 0
+            stock = StockModel(
+                article_id=movement.article_id,
+                location_id=movement.location_id,
+                quantity=movement.quantity,
+            )
 
-    # Check for critical stock after receipt (unlikely but possible if stock was negative)
-    article = db.query(Article).filter(Article.id == movement.article_id).first()
-    if article and stock.quantity <= article.stock_min:
-        notify_stock_critical(db, movement.article_id, stock.quantity, article.stock_min)
+            db.add(stock)
 
-    return db_movement
+        # Audit logging
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="STOCK_RECEIPT",
+            entity="Stock",
+            entity_id=stock.id,
+            old_values={"quantity": old_quantity},
+            new_values={"quantity": stock.quantity},
+            details=f"Receipt of {movement.quantity} units for article {movement.article_id}",
+        )
+
+        db.commit()
+        db.refresh(db_movement)
+
+        # Check for critical stock after receipt (unlikely but possible if stock was negative)
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if article and stock.quantity <= article.stock_min:
+            notify_stock_critical(db, current_user.id, movement.article_id, stock.quantity, article.stock_min)
+
+        return db_movement
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating receipt: {str(e)}"
+        )
 
 
 # ============================================================
@@ -283,61 +290,70 @@ def create_issue(
             detail="Movement type must be ISSUE",
         )
 
-    stock = (
-        db.query(StockModel)
-        .filter(
-            StockModel.article_id == movement.article_id,
-            StockModel.location_id == movement.location_id,
+    try:
+        stock = (
+            db.query(StockModel)
+            .filter(
+                StockModel.article_id == movement.article_id,
+                StockModel.location_id == movement.location_id,
+            )
+            .first()
         )
-        .first()
-    )
 
-    if not stock or stock.quantity < movement.quantity:
+        if not stock or stock.quantity < movement.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Insufficient stock. "
+                    f"Available: {stock.quantity if stock else 0}, "
+                    f"Requested: {movement.quantity}"
+                ),
+            )
+
+        movement_number = (
+            f"ISS-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        )
+
+        db_movement = StockMovementModel(
+            movement_number=movement_number,
+            user_id=current_user.id,
+            **movement.dict(),
+        )
+
+        db.add(db_movement)
+
+        old_quantity = stock.quantity
+        stock.quantity -= movement.quantity
+
+        # Audit logging
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="STOCK_ISSUE",
+            entity="Stock",
+            entity_id=stock.id,
+            old_values={"quantity": old_quantity},
+            new_values={"quantity": stock.quantity},
+            details=f"Issue of {movement.quantity} units for article {movement.article_id}",
+        )
+
+        db.commit()
+        db.refresh(db_movement)
+
+        # Check for critical stock after issue
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if article and stock.quantity <= article.stock_min:
+            notify_stock_critical(db, current_user.id, movement.article_id, stock.quantity, article.stock_min)
+
+        return db_movement
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
         raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Insufficient stock. "
-                f"Available: {stock.quantity if stock else 0}, "
-                f"Requested: {movement.quantity}"
-            ),
+            status_code=500,
+            detail=f"Error creating issue: {str(e)}"
         )
-
-    movement_number = (
-        f"ISS-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-    )
-
-    db_movement = StockMovementModel(
-        movement_number=movement_number,
-        user_id=current_user.id,
-        **movement.dict(),
-    )
-
-    db.add(db_movement)
-
-    old_quantity = stock.quantity
-    stock.quantity -= movement.quantity
-
-    # Audit logging
-    write_audit(
-        db,
-        user_id=current_user.id,
-        action="STOCK_ISSUE",
-        entity="Stock",
-        entity_id=stock.id,
-        old_values={"quantity": old_quantity},
-        new_values={"quantity": stock.quantity},
-        details=f"Issue of {movement.quantity} units for article {movement.article_id}",
-    )
-
-    db.commit()
-    db.refresh(db_movement)
-
-    # Check for critical stock after issue
-    article = db.query(Article).filter(Article.id == movement.article_id).first()
-    if article and stock.quantity <= article.stock_min:
-        notify_stock_critical(db, movement.article_id, stock.quantity, article.stock_min)
-
-    return db_movement
 
 
 # ============================================================
@@ -458,8 +474,8 @@ def create_transfer(
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error during transfer: {str(e)}",
+            status_code=500,
+            detail=f"Error during transfer: {str(e)}"
         )
 
 
@@ -491,57 +507,66 @@ def create_adjustment(
         f"ADJ-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
     )
 
-    db_movement = StockMovementModel(
-        movement_number=movement_number,
-        user_id=current_user.id,
-        **movement.dict(),
-    )
-
-    db.add(db_movement)
-
-    stock = (
-        db.query(StockModel)
-        .filter(
-            StockModel.article_id == movement.article_id,
-            StockModel.location_id == movement.location_id,
-        )
-        .first()
-    )
-
-    if stock:
-        old_quantity = stock.quantity
-        stock.quantity += movement.quantity
-    else:
-        old_quantity = 0
-        stock = StockModel(
-            article_id=movement.article_id,
-            location_id=movement.location_id,
-            quantity=movement.quantity,
+    try:
+        db_movement = StockMovementModel(
+            movement_number=movement_number,
+            user_id=current_user.id,
+            **movement.dict(),
         )
 
-        db.add(stock)
+        db.add(db_movement)
 
-    # Audit logging
-    write_audit(
-        db,
-        user_id=current_user.id,
-        action="STOCK_ADJUSTMENT",
-        entity="Stock",
-        entity_id=stock.id,
-        old_values={"quantity": old_quantity},
-        new_values={"quantity": stock.quantity},
-        details=f"Adjustment of {movement.quantity} units for article {movement.article_id}",
-    )
+        stock = (
+            db.query(StockModel)
+            .filter(
+                StockModel.article_id == movement.article_id,
+                StockModel.location_id == movement.location_id,
+            )
+            .first()
+        )
 
-    db.commit()
-    db.refresh(db_movement)
+        if stock:
+            old_quantity = stock.quantity
+            stock.quantity += movement.quantity
+        else:
+            old_quantity = 0
+            stock = StockModel(
+                article_id=movement.article_id,
+                location_id=movement.location_id,
+                quantity=movement.quantity,
+            )
 
-    # Check for critical stock after adjustment
-    article = db.query(Article).filter(Article.id == movement.article_id).first()
-    if article and stock.quantity <= article.stock_min:
-        notify_stock_critical(db, movement.article_id, stock.quantity, article.stock_min)
+            db.add(stock)
 
-    return db_movement
+        # Audit logging
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="STOCK_ADJUSTMENT",
+            entity="Stock",
+            entity_id=stock.id,
+            old_values={"quantity": old_quantity},
+            new_values={"quantity": stock.quantity},
+            details=f"Adjustment of {movement.quantity} units for article {movement.article_id}",
+        )
+
+        db.commit()
+        db.refresh(db_movement)
+
+        # Check for critical stock after adjustment
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if article and stock.quantity <= article.stock_min:
+            notify_stock_critical(db, current_user.id, movement.article_id, stock.quantity, article.stock_min)
+
+        return db_movement
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating adjustment: {str(e)}"
+        )
 
 
 # ============================================================
@@ -574,54 +599,63 @@ def create_return(
         f"RET-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
     )
 
-    db_movement = StockMovementModel(
-        movement_number=movement_number,
-        user_id=current_user.id,
-        **movement.dict(),
-    )
-
-    db.add(db_movement)
-
-    stock = (
-        db.query(StockModel)
-        .filter(
-            StockModel.article_id == movement.article_id,
-            StockModel.location_id == movement.location_id,
-        )
-        .first()
-    )
-
-    if stock:
-        old_quantity = stock.quantity
-        stock.quantity += movement.quantity
-    else:
-        old_quantity = 0
-        stock = StockModel(
-            article_id=movement.article_id,
-            location_id=movement.location_id,
-            quantity=movement.quantity,
+    try:
+        db_movement = StockMovementModel(
+            movement_number=movement_number,
+            user_id=current_user.id,
+            **movement.dict(),
         )
 
-        db.add(stock)
+        db.add(db_movement)
 
-    # Audit logging
-    write_audit(
-        db,
-        user_id=current_user.id,
-        action="STOCK_RETURN",
-        entity="Stock",
-        entity_id=stock.id,
-        old_values={"quantity": old_quantity},
-        new_values={"quantity": stock.quantity},
-        details=f"Return of {movement.quantity} units for article {movement.article_id}",
-    )
+        stock = (
+            db.query(StockModel)
+            .filter(
+                StockModel.article_id == movement.article_id,
+                StockModel.location_id == movement.location_id,
+            )
+            .first()
+        )
 
-    db.commit()
-    db.refresh(db_movement)
+        if stock:
+            old_quantity = stock.quantity
+            stock.quantity += movement.quantity
+        else:
+            old_quantity = 0
+            stock = StockModel(
+                article_id=movement.article_id,
+                location_id=movement.location_id,
+                quantity=movement.quantity,
+            )
 
-    # Check for critical stock after return (unlikely but possible if stock was negative)
-    article = db.query(Article).filter(Article.id == movement.article_id).first()
-    if article and stock.quantity <= article.stock_min:
-        notify_stock_critical(db, movement.article_id, stock.quantity, article.stock_min)
+            db.add(stock)
 
-    return db_movement
+        # Audit logging
+        write_audit(
+            db,
+            user_id=current_user.id,
+            action="STOCK_RETURN",
+            entity="Stock",
+            entity_id=stock.id,
+            old_values={"quantity": old_quantity},
+            new_values={"quantity": stock.quantity},
+            details=f"Return of {movement.quantity} units for article {movement.article_id}",
+        )
+
+        db.commit()
+        db.refresh(db_movement)
+
+        # Check for critical stock after return (unlikely but possible if stock was negative)
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if article and stock.quantity <= article.stock_min:
+            notify_stock_critical(db, current_user.id, movement.article_id, stock.quantity, article.stock_min)
+
+        return db_movement
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating return: {str(e)}"
+        )

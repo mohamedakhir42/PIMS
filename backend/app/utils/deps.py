@@ -21,12 +21,13 @@ def require_admin(
 
 def check_permission(permission: str):
     """
-    Vérifie une permission directement attribuée à l'utilisateur.
+    Vérifie si l'utilisateur possède la permission requise.
 
     ADMIN possède automatiquement tous les droits.
-
-    Pour les autres utilisateurs, les permissions du rôle
-    ne sont plus utilisées pour l'autorisation.
+    
+    Pour les autres utilisateurs, vérifie:
+    1. Les permissions héritées du rôle
+    2. Les permissions directement attribuées à l'utilisateur
     """
 
     def permission_checker(
@@ -37,13 +38,25 @@ def check_permission(permission: str):
         if current_user.role and current_user.role.name == "ADMIN":
             return current_user
 
-        # Permissions directement attribuées à l'utilisateur
-        user_permissions = {
-            user_permission.permission.name
-            for user_permission in current_user.user_permissions
-        }
+        # Collecter toutes les permissions de l'utilisateur
+        all_permissions = set()
 
-        if permission not in user_permissions:
+        # 1. Permissions héritées du rôle
+        if current_user.role and current_user.role.permissions:
+            role_permissions = {
+                perm.name for perm in current_user.role.permissions
+            }
+            all_permissions.update(role_permissions)
+
+        # 2. Permissions directement attribuées à l'utilisateur
+        if current_user.user_permissions:
+            user_permissions = {
+                user_permission.permission.name
+                for user_permission in current_user.user_permissions
+            }
+            all_permissions.update(user_permissions)
+
+        if permission not in all_permissions:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permission '{permission}' required",

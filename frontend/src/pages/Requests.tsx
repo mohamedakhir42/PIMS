@@ -26,9 +26,11 @@ export default function Requests() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await requestsService.create(formData);
+    const createdRequest = await requestsService.create(formData);
     setShowModal(false);
     setFormData({ service: '', priority: 'NORMAL', reason: '', items: [{ article_id: '', quantity: 1 }] });
+    // Submit the request after creation
+    await requestsService.submit(createdRequest.id);
     load();
   };
 
@@ -73,13 +75,17 @@ export default function Requests() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
+      'DRAFT': 'secondary',
+      'SUBMITTED': 'info',
       'PENDING_APPROVAL': 'warning',
       'APPROVED': 'success',
       'REJECTED': 'danger',
-      'ISSUED': 'primary',
+      'PREPARING': 'primary',
+      'READY': 'primary',
+      'ISSUED': 'success',
       'CANCELLED': 'secondary'
     };
-    return <span className={`badge bg-${colors[status] || 'secondary'}`}>{status}</span>;
+    return <span className={`badge bg-${colors[status] || 'secondary'}`}>{status.replace(/_/g, ' ')}</span>;
   };
 
   return (
@@ -118,6 +124,9 @@ export default function Requests() {
                         <button className="btn btn-sm btn-outline-success me-1" onClick={() => { setApproveRequestId(r.id); setShowApproveModal(true); }}>Approve</button>
                         <button className="btn btn-sm btn-outline-danger" onClick={() => { setSelectedRequest(r); setRejectReason(''); }}>Reject</button>
                       </>
+                    )}
+                    {(r.status === 'DRAFT' || r.status === 'SUBMITTED') && (
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => requestsService.cancel(r.id).then(load)}>Cancel</button>
                     )}
                     {r.status === 'REJECTED' && r.rejection_reason && (
                       <button className="btn btn-sm btn-outline-info" onClick={() => { setSelectedRequest(r); setRejectReason(r.rejection_reason); }}>View Reason</button>

@@ -26,14 +26,19 @@ def create_notification(
     db.add(notification)
     return notification
 
-def notify_stock_critical(db: Session, user_id: uuid.UUID, article_name: str, current_stock: int):
+def notify_stock_critical(db: Session, user_id: uuid.UUID, article_id: uuid.UUID, current_stock: int, stock_min: int):
+    from app.models.article import Article
+    article = db.query(Article).filter(Article.id == article_id).first()
+    article_name = article.designation if article else f"Article {article_id}"
+    
     return create_notification(
         db,
         user_id=user_id,
         notification_type=NotificationType.STOCK_CRITICAL,
         title=f"Stock Critical: {article_name}",
-        message=f"Stock level is critical for {article_name}. Current: {current_stock}",
+        message=f"Stock level is critical for {article_name}. Current: {current_stock}, Minimum: {stock_min}",
         entity_type="Article",
+        entity_id=article_id,
     )
 
 def notify_new_request(db: Session, user_id: uuid.UUID, request_number: str):

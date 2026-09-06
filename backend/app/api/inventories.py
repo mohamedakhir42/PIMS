@@ -145,42 +145,113 @@ def validate_inventory(
         raise HTTPException(404, "Inventory not found")
     if inv.status == InventoryStatus.VALIDATED:
         raise HTTPException(400, "Inventory already validated")
+    if inv.status != InventoryStatus.IN_PROGRESS:
+        raise HTTPException(400, "Inventory must be in progress to validate")
 
-    from app.models.location import Location
-    from app.models.zone import Zone
-    for item in inv.items:
-        if item.difference == 0:
-            continue
-        stocks = (
-            db.query(Stock)
-            .join(Location, Location.id == Stock.location_id)
-            .join(Zone, Zone.id == Location.zone_id)
-            .filter(Zone.warehouse_id == inv.warehouse_id, Stock.article_id == item.article_id)
-            .all()
-        )
-        if not stocks:
-            continue
-        remaining = item.difference
-        # Apply the warehouse-level difference to the first matching location.
-        stock = stocks[0]
-        stock.quantity = max(0, stock.quantity + remaining)
-        db.add(StockMovement(
-            movement_number=f"INV-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}",
-            article_id=item.article_id, quantity=remaining,
-            movement_type=MovementType.INVENTORY_ADJUSTMENT,
-            user_id=current_user.id, location_id=stock.location_id,
-            warehouse_id=inv.warehouse_id, site_id=inv.site_id,
-            reason=f"Inventory {inv.inventory_number}",
-        ))
-    inv.status = InventoryStatus.VALIDATED
-    inv.validated_by = current_user.id
-    inv.validated_at = datetime.utcnow()
-    write_audit(db, user_id=current_user.id, action="VALIDATE_INVENTORY", entity="Inventory", entity_id=inv.id)
-    
-    # Notify responsible user about inventory completion
-    if inv.responsible_id:
-        notify_inventory_completed(db, inv.responsible_id, inv.inventory_number)
-    
-    db.commit()
-    db.refresh(inv)
-    return inv
+    try:
+        from app.models.location import Location
+        from app.models.zone import Zone
+        from app.models.article import Article
+        
+        for item in inv.items:
+            if item.difference == 0:
+                continue
+            
+            # Find stocks for this article in the warehouse
+            stocks = (
+                db.query(Stock)
+                .join(Location, Location.id == Stock.location_id)
+                .join(Zone, Zone.id == Location.zone_id)
+                .filter(Zone.warehouse_id == inv.warehouse_id, Stock.article_id == item.article_id)
+                .all()
+            )
+            
+            if not stocks:
+                # No stock exists for this article - create it if difference is positive
+                if item.difference > 0:
+                    # Find a location in this warehouse
+                    location = (
+                        db.query(Location)
+                        .join(Zone, Zone.id == Location.zone_id)
+                        .filter(Zone.warehouse_id == inv.warehouse_id)
+                        .first()
+                    )
+                    if location:
+                        new_stock = Stock(
+                            article_id=item.article_id,
+                            location_id=location.id,
+                            quantity=item.difference
+                        )
+                        db.add(new_stock)
+                        
+                        # Create adjustment movement
+                        movement_number = f"INV-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+                        db.add(StockMovement(
+                            movement_number=movement_number,
+                            article_id=item.article_id,
+                            quantity=item.difference,
+                            movement_type=MovementType.INVENTORY_ADJUSTMENT,
+                            user_id=current_user.id,
+                            location_id=location.id,
+                            warehouse_id=inv.warehouse_id,
+                            site_id=inv.site_id,
+                            reason=f"Inventory {inv.inventory_number} - new stock",
+                        ))
+                continue
+            
+            # Apply difference to stocks (distribute proportionally or to first location)
+            remaining = item.difference
+            for stock in stocks:
+                if remaining == 0:
+                    break
+                
+                old_quantity = stock.quantity
+                # Apply the adjustment to this stock
+                stock.quantity = max(0, stock.quantity + remaining)
+                actual_adjustment = stock.quantity - old_quantity
+                remaining -= actual_adjustment
+                
+                # Create adjustment movement
+                movement_number = f"INV-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+                db.add(StockMovement(
+                    movement_number=movement_number,
+                    article_id=item.article_id,
+                    quantity=actual_adjustment,
+                    movement_type=MovementType.INVENTORY_ADJUSTMENT,
+                    user_id=current_user.id,
+                    location_id=stock.location_id,
+                    warehouse_id=inv.warehouse_id,
+                    site_id=inv.site_id,
+                    reason=f"Inventory {inv.inventory_number}",
+                ))
+                
+                # Audit logging for each stock adjustment
+                write_audit(
+                    db,
+                    user_id=current_user.id,
+                    action="INVENTORY_ADJUSTMENT",
+                    entity="Stock",
+                    entity_id=stock.id,
+                    old_values={"quantity": old_quantity},
+                    new_values={"quantity": stock.quantity},
+                    details=f"Inventory {inv.inventory_number} adjustment for article {item.article_id}",
+                )
+        
+        inv.status = InventoryStatus.VALIDATED
+        inv.validated_by = current_user.id
+        inv.validated_at = datetime.utcnow()
+        write_audit(db, user_id=current_user.id, action="VALIDATE_INVENTORY", entity="Inventory", entity_id=inv.id)
+        
+        # Notify responsible user about inventory completion
+        if inv.responsible_id:
+            notify_inventory_completed(db, inv.responsible_id, inv.inventory_number)
+        
+        db.commit()
+        db.refresh(inv)
+        return inv
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, f"Error validating inventory: {str(e)}")

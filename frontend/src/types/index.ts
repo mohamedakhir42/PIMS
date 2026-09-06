@@ -7,6 +7,7 @@ export interface User {
   full_name?: string;
   status: UserStatus;
   role_id?: string;
+  role_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -71,6 +72,32 @@ export interface Stock {
 }
 
 export type MovementType = 'RECEIPT' | 'ISSUE' | 'TRANSFER' | 'RETURN' | 'ADJUSTMENT' | 'INVENTORY_ADJUSTMENT';
+
+export type RequestStatus = 'DRAFT' | 'SUBMITTED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'PREPARING' | 'READY' | 'ISSUED' | 'CANCELLED';
+
+export type RequestPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface StockRequest {
+  id: string;
+  request_number: string;
+  requester_id: string;
+  service: string;
+  priority: RequestPriority;
+  reason: string;
+  status: RequestStatus;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+  items: StockRequestItem[];
+}
+
+export interface StockRequestItem {
+  id: string;
+  article_id: string;
+  quantity: number;
+}
 
 export interface StockMovement {
   id: string;

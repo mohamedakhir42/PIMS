@@ -32,9 +32,9 @@ export const stockService = {
   },
 
   createTransfer: async (data: any) => {
-  const response = await api.post('/stock/transfer', data);
-  return response.data;
-},
+    const response = await api.post('/stock/transfer', data);
+    return response.data;
+  },
 
   createReturn: async (data: any) => {
     const response = await api.post('/stock/return', data);
