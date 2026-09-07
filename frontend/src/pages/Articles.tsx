@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { articleService } from '../services/articles';
+import { articlesService } from '../services/articles';
 import { categoryService } from '../services/categories';
 import { supplierService } from '../services/suppliers';
 import { Article, ArticleStatus, Category, Supplier } from '../types';
@@ -44,7 +44,7 @@ const Articles: React.FC = () => {
   const loadArticles = async () => {
     try {
       setError(null);
-      const data = await articleService.getArticles();
+      const data = await articlesService.getArticles();
       setArticles(data);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load articles';
@@ -142,7 +142,7 @@ const Articles: React.FC = () => {
       return;
     }
     try {
-      await articleService.deleteArticle(article.id);
+      await articlesService.deleteArticle(article.id);
       loadArticles();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete article';
@@ -160,9 +160,9 @@ const Articles: React.FC = () => {
         reorder_point: formData.reorder_point ? parseInt(formData.reorder_point) : null
       };
       if (editingArticle) {
-        await articleService.updateArticle(editingArticle.id, submitData);
+        await articlesService.updateArticle(editingArticle.id, submitData);
       } else {
-        await articleService.createArticle(submitData);
+        await articlesService.createArticle(submitData);
       }
       setShowModal(false);
       loadArticles();

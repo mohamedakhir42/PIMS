@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { articleService } from '../services/articles';
+import { articlesService } from '../services/articles';
 import { attachmentsService } from '../services/attachments';
 import { stockService } from '../services/stock';
 import { Article, StockMovement } from '../types';
@@ -25,7 +25,7 @@ const ArticleDetail: React.FC = () => {
 
   const loadArticle = async (articleId: string) => {
     try {
-      const data = await articleService.getArticle(articleId);
+      const data = await articlesService.getArticle(articleId);
       setArticle(data);
     } catch (error) {
       console.error('Error loading article:', error);
@@ -92,7 +92,7 @@ const ArticleDetail: React.FC = () => {
       return;
     }
     try {
-      await articleService.deleteArticle(id);
+      await articlesService.deleteArticle(id);
       navigate('/articles');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete article';

@@ -9,4 +9,5 @@ export const requestsService = {
   cancel: async (id: string) => (await api.post(`/requests/${id}/cancel`)).data,
   approve: async (id: string) => (await api.post(`/requests/${id}/approve`)).data,
   reject: async (id: string, reason: string) => (await api.post(`/requests/${id}/reject`, { rejection_reason: reason })).data,
+  issue: async (id: string, data: { location_id: string; warehouse_id: string; site_id: string }) => (await api.post(`/requests/${id}/issue`, data)).data,
 };

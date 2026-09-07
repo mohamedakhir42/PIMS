@@ -1,7 +1,7 @@
 import api from './api';
 import { Article } from '../types';
 
-export const articleService = {
+export const articlesService = {
   async getArticles(skip = 0, limit = 100): Promise<Article[]> {
     const response = await api.get<Article[]>(`/articles?skip=${skip}&limit=${limit}`);
     return response.data;

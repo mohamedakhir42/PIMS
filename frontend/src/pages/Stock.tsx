@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { stockService } from '../services/stock';
-import { articleService } from '../services/articles';
+import { articlesService } from '../services/articles';
 import { locationsService, Location } from '../services/locations';
 import { Stock, Article } from '../types';
 
@@ -74,7 +74,7 @@ const StockPage: React.FC = () => {
 
   const loadArticles = async () => {
     try {
-      const data = await articleService.getArticles();
+      const data = await articlesService.getArticles();
       setArticles(data);
     } catch (err) {
       console.error('Error loading articles:', err);

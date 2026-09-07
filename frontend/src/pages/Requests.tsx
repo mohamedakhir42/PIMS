@@ -1,11 +1,20 @@
-import { useEffect, useState } from 'react';
-import { requestsService } from '../services/requests';
-import { articleService } from '../services/articles';
+import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
+import { requestsService } from '../services/requests';
+import { articlesService } from '../services/articles';
+import { sitesService } from '../services/sites';
+import { warehousesService } from '../services/warehouses';
+import { zonesService } from '../services/zones';
+import { locationsService } from '../services/locations';
+import { Article, StockRequest, Site, Warehouse, Zone, Location } from '../types';
 
 export default function Requests() {
   const [rows, setRows] = useState<any[]>([]);
   const [articles, setArticles] = useState<any[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -17,11 +26,28 @@ export default function Requests() {
   const [rejectReason, setRejectReason] = useState('');
 
   const load = () => requestsService.list().then(setRows);
-  const loadArticles = () => articleService.getArticles().then(setArticles);
+  const loadArticles = () => articlesService.getArticles().then(setArticles);
+  const loadSites = () => sitesService.getSites().then(setSites);
+
+  const loadWarehouses = async (siteId: string) => {
+    const all = await warehousesService.getWarehouses();
+    setWarehouses(all.filter(w => w.site_id === siteId));
+  };
+
+  const loadZones = async (warehouseId: string) => {
+    const all = await zonesService.getZones();
+    setZones(all.filter(z => z.warehouse_id === warehouseId));
+  };
+
+  const loadLocations = async (zoneId: string) => {
+    const all = await locationsService.getLocations();
+    setLocations(all.filter(l => l.zone_id === zoneId));
+  };
 
   useEffect(() => {
     load();
     loadArticles();
+    loadSites();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +87,14 @@ export default function Requests() {
 
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveRequestId, setApproveRequestId] = useState<string | null>(null);
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [issueRequestId, setIssueRequestId] = useState<string | null>(null);
+  const [issueForm, setIssueForm] = useState({
+    site_id: '',
+    warehouse_id: '',
+    zone_id: '',
+    location_id: ''
+  });
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
@@ -73,6 +107,21 @@ export default function Requests() {
     load();
   };
 
+  const handleIssue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!issueRequestId) return;
+    try {
+      await requestsService.issue(issueRequestId, issueForm);
+      setShowIssueModal(false);
+      setIssueRequestId(null);
+      setIssueForm({ location_id: '', warehouse_id: '', site_id: '',zone_id: '' });
+      load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to issue material';
+      alert(message);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       'DRAFT': 'secondary',
@@ -80,9 +129,9 @@ export default function Requests() {
       'PENDING_APPROVAL': 'warning',
       'APPROVED': 'success',
       'REJECTED': 'danger',
-      'PREPARING': 'primary',
-      'READY': 'primary',
-      'ISSUED': 'success',
+      'READY_FOR_ISSUE': 'primary',
+      'PARTIALLY_FULFILLED': 'info',
+      'FULFILLED': 'success',
       'CANCELLED': 'secondary'
     };
     return <span className={`badge bg-${colors[status] || 'secondary'}`}>{status.replace(/_/g, ' ')}</span>;
@@ -127,6 +176,9 @@ export default function Requests() {
                     )}
                     {(r.status === 'DRAFT' || r.status === 'SUBMITTED') && (
                       <button className="btn btn-sm btn-outline-secondary" onClick={() => requestsService.cancel(r.id).then(load)}>Cancel</button>
+                    )}
+                    {r.status === 'READY_FOR_ISSUE' && (
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => { setIssueRequestId(r.id); setShowIssueModal(true); }}>Issue Material</button>
                     )}
                     {r.status === 'REJECTED' && r.rejection_reason && (
                       <button className="btn btn-sm btn-outline-info" onClick={() => { setSelectedRequest(r); setRejectReason(r.rejection_reason); }}>View Reason</button>
@@ -225,6 +277,56 @@ export default function Requests() {
             </div>
           </>
         )}
+      </Modal>
+
+      <Modal
+        show={showIssueModal}
+        onHide={() => { setShowIssueModal(false); setIssueRequestId(null); setIssueForm({ location_id: '', warehouse_id: '', site_id: '' }); setWarehouses([]); setZones([]); setLocations([]); }}
+        title="Issue Material"
+        size="sm"
+      >
+        <form onSubmit={handleIssue}>
+          <div className="mb-3">
+            <label className="form-label">Site</label>
+            <select className="form-select" value={issueForm.site_id} onChange={e => { setIssueForm({ ...issueForm, site_id: e.target.value, warehouse_id: '', location_id: '' }); if (e.target.value) loadWarehouses(e.target.value); }} required>
+              <option value="">Select Site</option>
+              {sites.map(s => (
+                <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Warehouse</label>
+            <select className="form-select" value={issueForm.warehouse_id} onChange={e => { setIssueForm({ ...issueForm, warehouse_id: e.target.value, location_id: '' }); if (e.target.value) loadZones(e.target.value); }} disabled={!issueForm.site_id} required>
+              <option value="">Select Warehouse</option>
+              {warehouses.map(w => (
+                <option key={w.id} value={w.id}>{w.code} - {w.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Zone</label>
+            <select className="form-select" value={issueForm.zone_id || ''} onChange={e => { setIssueForm({ ...issueForm, zone_id: e.target.value, location_id: '' }); if (e.target.value) loadLocations(e.target.value); }} disabled={!issueForm.warehouse_id}>
+              <option value="">Select Zone</option>
+              {zones.map(z => (
+                <option key={z.id} value={z.id}>{z.code} - {z.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Location</label>
+            <select className="form-select" value={issueForm.location_id} onChange={e => setIssueForm({ ...issueForm, location_id: e.target.value })} disabled={!issueForm.zone_id} required>
+              <option value="">Select Location</option>
+              {locations.map(l => (
+                <option key={l.id} value={l.id}>{l.code} - {l.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={() => { setShowIssueModal(false); setIssueRequestId(null); setIssueForm({ location_id: '', warehouse_id: '', site_id: '' }); setWarehouses([]); setZones([]); setLocations([]); }}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Issue Material</button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
