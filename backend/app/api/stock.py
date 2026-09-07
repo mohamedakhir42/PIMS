@@ -4,7 +4,7 @@ from typing import List
 
 from app.db.database import get_db
 from app.models.stock import Stock as StockModel
-from app.models.article import Article
+from app.models.article import Article, ArticleStatus
 from app.models.location import Location
 from app.models.stock_movement import (
     StockMovement as StockMovementModel,
@@ -228,7 +228,7 @@ def create_receipt(
                 status_code=404,
                 detail="Article not found",
             )
-        if article.status != Article.ArticleStatus.ACTIVE:
+        if article.status != ArticleStatus.ACTIVE:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot create movement for inactive article",
@@ -331,7 +331,7 @@ def create_issue(
                 status_code=404,
                 detail="Article not found",
             )
-        if article.status != Article.ArticleStatus.ACTIVE:
+        if article.status != ArticleStatus.ACTIVE:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot create movement for inactive article",
@@ -447,7 +447,7 @@ def create_transfer(
                 status_code=404,
                 detail="Article not found",
             )
-        if article.status != Article.ArticleStatus.ACTIVE:
+        if article.status != ArticleStatus.ACTIVE:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot create movement for inactive article",
@@ -575,7 +575,7 @@ def create_adjustment(
                 status_code=404,
                 detail="Article not found",
             )
-        if article.status != Article.ArticleStatus.ACTIVE:
+        if article.status != ArticleStatus.ACTIVE:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot create movement for inactive article",
@@ -681,7 +681,7 @@ def create_return(
                 status_code=404,
                 detail="Article not found",
             )
-        if article.status != Article.ArticleStatus.ACTIVE:
+        if article.status != ArticleStatus.ACTIVE:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot create movement for inactive article",
