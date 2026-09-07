@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -10,6 +10,7 @@ from app.schemas.user import UserCreate, UserUpdate, User as UserSchema
 from app.utils.deps import check_permission
 from app.services.audit import write_audit
 from app.core.security import get_password_hash
+from app.utils.files import validate_image_file, save_uploaded_file, delete_file
 
 router = APIRouter()
 
@@ -95,3 +96,111 @@ def list_roles(
     current_user: User = Depends(check_permission("USERS_READ")),
 ):
     return db.query(Role).order_by(Role.name).all()
+
+
+@router.post("/{user_id}/avatar", response_model=UserSchema)
+async def upload_user_avatar(
+    user_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("USERS_UPDATE")),
+):
+    """Upload an avatar for a user."""
+    # Check if user can update their own avatar or has admin permission
+    if current_user.id != user_id and not current_user.permissions.__contains__("USER_UPDATE"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own avatar"
+        )
+    
+    # Validate user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+    
+    # Validate file
+    validate_image_file(file)
+    
+    # Delete old avatar if exists
+    if user.avatar_url:
+        delete_file(user.avatar_url, "uploads")
+    
+    # Save new file
+    file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_url = save_uploaded_file(file, "uploads", unique_filename)
+    
+    # Update user
+    old_avatar_url = user.avatar_url
+    user.avatar_url = file_url
+    
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="UPDATE_USER_AVATAR",
+        entity="User",
+        entity_id=user.id,
+        old_values={"avatar_url": old_avatar_url},
+        new_values={"avatar_url": file_url},
+    )
+    
+    db.commit()
+    db.refresh(user)
+    
+    return user
+
+
+@router.delete("/{user_id}/avatar", response_model=UserSchema)
+def delete_user_avatar(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("USERS_UPDATE")),
+):
+    """Delete the avatar from a user."""
+    # Check if user can update their own avatar or has admin permission
+    if current_user.id != user_id and not current_user.permissions.__contains__("USER_UPDATE"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own avatar"
+        )
+    
+    # Validate user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+    
+    if not user.avatar_url:
+        raise HTTPException(
+            status_code=400,
+            detail="User has no avatar to delete"
+        )
+    
+    # Delete physical file
+    delete_file(user.avatar_url, "uploads")
+    
+    # Update user
+    old_avatar_url = user.avatar_url
+    user.avatar_url = None
+    
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="DELETE_USER_AVATAR",
+        entity="User",
+        entity_id=user.id,
+        old_values={"avatar_url": old_avatar_url},
+        new_values={"avatar_url": None},
+    )
+    
+    db.commit()
+    db.refresh(user)
+    
+    return user

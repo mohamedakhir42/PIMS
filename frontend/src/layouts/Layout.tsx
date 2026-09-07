@@ -449,10 +449,27 @@ const Layout: React.FC = () => {
             </span>
 
             {currentUser && (
-              <span className="fw-semibold">
-                {currentUser.full_name ||
-                  currentUser.username}
-              </span>
+              <div className="d-flex align-items-center gap-2">
+                {currentUser.avatar_url ? (
+                  <img
+                    src={`http://localhost:8000${currentUser.avatar_url}`}
+                    alt={currentUser.username}
+                    className="rounded-circle"
+                    style={{ width: '32px', height: '32px', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div
+                    className="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white"
+                    style={{ width: '32px', height: '32px', fontSize: '12px' }}
+                  >
+                    {currentUser.username.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="fw-semibold">
+                  {currentUser.full_name ||
+                    currentUser.username}
+                </span>
+              </div>
             )}
 
           </div>

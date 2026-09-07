@@ -20,6 +20,7 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(100))
+    avatar_url = Column(String(500), nullable=True)
     status = Column(SQLEnum(UserStatus), default=UserStatus.ACTIVE)
     role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"))
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     username: str
     email: EmailStr
     full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     status: UserStatus = UserStatus.ACTIVE
     role_id: Optional[UUID] = None
 
@@ -21,6 +22,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     status: Optional[UserStatus] = None
     role_id: Optional[UUID] = None
 

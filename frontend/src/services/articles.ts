@@ -25,4 +25,20 @@ export const articlesService = {
   async deleteArticle(id: string): Promise<void> {
     await api.delete(`/articles/${id}`);
   },
+
+  async uploadImage(id: string, file: File): Promise<Article> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<Article>(`/articles/${id}/image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async deleteImage(id: string): Promise<Article> {
+    const response = await api.delete<Article>(`/articles/${id}/image`);
+    return response.data;
+  },
 };

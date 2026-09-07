@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
+import uuid
+import os
 
 from app.db.database import get_db
 from app.models.article import Article as ArticleModel
@@ -9,8 +11,7 @@ from app.schemas.article import ArticleCreate, ArticleUpdate, Article
 from app.utils.deps import check_permission
 from app.models.user import User
 from app.services.audit import write_audit
-
-import uuid
+from app.utils.files import validate_image_file, save_uploaded_file, delete_file
 
 
 router = APIRouter()
@@ -203,3 +204,105 @@ def delete_article(
         db.delete(db_article)
         db.commit()
         return {"message": "Article deleted"}
+
+
+@router.post("/{article_id}/image", response_model=Article)
+async def upload_article_image(
+    article_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("ARTICLES_UPDATE"))
+):
+    """Upload an image for an article."""
+    # Validate article exists
+    article = (
+        db.query(ArticleModel)
+        .filter(ArticleModel.id == article_id)
+        .first()
+    )
+    if not article:
+        raise HTTPException(
+            status_code=404,
+            detail="Article not found"
+        )
+    
+    # Validate file
+    validate_image_file(file)
+    
+    # Delete old image if exists
+    if article.image_url:
+        delete_file(article.image_url, "uploads")
+    
+    # Save new file
+    file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_url = save_uploaded_file(file, "uploads", unique_filename)
+    
+    # Update article
+    old_image_url = article.image_url
+    article.image_url = file_url
+    
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="UPDATE_ARTICLE_IMAGE",
+        entity="Article",
+        entity_id=article.id,
+        old_values={"image_url": old_image_url},
+        new_values={"image_url": file_url},
+    )
+    
+    db.commit()
+    db.refresh(article)
+    
+    return article
+
+
+@router.delete("/{article_id}/image", response_model=Article)
+def delete_article_image(
+    article_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(check_permission("ARTICLES_UPDATE"))
+):
+    """Delete the image from an article."""
+    # Validate article exists
+    article = (
+        db.query(ArticleModel)
+        .filter(ArticleModel.id == article_id)
+        .first()
+    )
+    if not article:
+        raise HTTPException(
+            status_code=404,
+            detail="Article not found"
+        )
+    
+    if not article.image_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Article has no image to delete"
+        )
+    
+    # Delete physical file
+    delete_file(article.image_url, "uploads")
+    
+    # Update article
+    old_image_url = article.image_url
+    article.image_url = None
+    
+    # Audit logging
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="DELETE_ARTICLE_IMAGE",
+        entity="Article",
+        entity_id=article.id,
+        old_values={"image_url": old_image_url},
+        new_values={"image_url": None},
+    )
+    
+    db.commit()
+    db.refresh(article)
+    
+    return article

@@ -20,6 +20,8 @@ const Articles: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     code: '',
     reference: '',
@@ -115,6 +117,7 @@ const Articles: React.FC = () => {
       barcode: '',
       status: ArticleStatus.ACTIVE
     });
+    setImagePreview(null);
     setShowModal(true);
   };
 
@@ -134,6 +137,7 @@ const Articles: React.FC = () => {
       barcode: article.barcode || '',
       status: article.status
     });
+    setImagePreview(article.image_url || null);
     setShowModal(true);
   };
 
@@ -171,6 +175,55 @@ const Articles: React.FC = () => {
       alert(message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingArticle) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Invalid file type. Please upload JPEG, PNG, WebP, or GIF.');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const updatedArticle = await articleService.uploadImage(editingArticle.id, file);
+      setImagePreview(updatedArticle.image_url || null);
+      setEditingArticle(updatedArticle);
+      alert('Image uploaded successfully');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to upload image';
+      alert(message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageDelete = async () => {
+    if (!editingArticle) return;
+
+    if (!window.confirm('Are you sure you want to delete this image?')) {
+      return;
+    }
+
+    try {
+      const updatedArticle = await articleService.deleteImage(editingArticle.id);
+      setImagePreview(null);
+      setEditingArticle(updatedArticle);
+      alert('Image deleted successfully');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete image';
+      alert(message);
     }
   };
 
@@ -424,6 +477,50 @@ const Articles: React.FC = () => {
                       <option value={ArticleStatus.DISCONTINUED}>Discontinued</option>
                     </select>
                   </div>
+                  {editingArticle && (
+                    <div className="mb-3">
+                      <label className="form-label">Image</label>
+                      {imagePreview ? (
+                        <div className="border rounded p-3">
+                          <img
+                            src={`http://localhost:8000${imagePreview}`}
+                            alt="Article"
+                            className="img-fluid mb-2"
+                            style={{ maxHeight: '200px' }}
+                          />
+                          <div>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger"
+                              onClick={handleImageDelete}
+                              disabled={uploadingImage}
+                            >
+                              Delete Image
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border rounded p-3 text-center">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            onChange={handleImageUpload}
+                            disabled={uploadingImage}
+                            className="form-control"
+                          />
+                          <small className="text-muted">
+                            Max size: 5MB. Formats: JPEG, PNG, WebP, GIF
+                          </small>
+                        </div>
+                      )}
+                      {uploadingImage && (
+                        <div className="text-center mt-2">
+                          <span className="spinner-border spinner-border-sm" role="status"></span>
+                          <span className="ms-2">Uploading...</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>

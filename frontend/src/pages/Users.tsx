@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usersService } from '../services/users';
+import { User } from '../types';
 
 export default function Users() {
   const navigate = useNavigate();
 
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<User[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -29,6 +32,7 @@ export default function Users() {
 
   const resetForm = () => {
     setEditingUser(null);
+    setAvatarPreview(null);
     setFormData({
       username: '',
       email: '',
@@ -70,7 +74,7 @@ export default function Users() {
     }
   };
 
-  const handleEdit = (user: any) => {
+  const handleEdit = (user: User) => {
     setEditingUser(user);
 
     setFormData({
@@ -80,7 +84,7 @@ export default function Users() {
       password: '',
       role_id: user.role_id || '',
     });
-
+    setAvatarPreview(user.avatar_url || null);
     setShowModal(true);
   };
 
@@ -108,6 +112,55 @@ export default function Users() {
     resetForm();
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingUser) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Invalid file type. Please upload JPEG, PNG, WebP, or GIF.');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const updatedUser = await usersService.uploadAvatar(editingUser.id, file);
+      setAvatarPreview(updatedUser.avatar_url || null);
+      setEditingUser(updatedUser);
+      alert('Avatar uploaded successfully');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to upload avatar';
+      alert(message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!editingUser) return;
+
+    if (!window.confirm('Are you sure you want to delete this avatar?')) {
+      return;
+    }
+
+    try {
+      const updatedUser = await usersService.deleteAvatar(editingUser.id);
+      setAvatarPreview(null);
+      setEditingUser(updatedUser);
+      alert('Avatar deleted successfully');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete avatar';
+      alert(message);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
@@ -128,6 +181,7 @@ export default function Users() {
           <table className="table mb-0">
             <thead>
               <tr>
+                <th>Avatar</th>
                 <th>Username</th>
                 <th>Name</th>
                 <th>Email</th>
@@ -141,7 +195,7 @@ export default function Users() {
               {rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="text-center py-4 text-muted"
                   >
                     No users found.
@@ -150,6 +204,23 @@ export default function Users() {
               ) : (
                 rows.map((u) => (
                   <tr key={u.id}>
+                    <td>
+                      {u.avatar_url ? (
+                        <img
+                          src={`http://localhost:8000${u.avatar_url}`}
+                          alt={u.username}
+                          className="rounded-circle"
+                          style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div
+                          className="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white"
+                          style={{ width: '40px', height: '40px', fontSize: '14px' }}
+                        >
+                          {u.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </td>
                     <td>{u.username}</td>
 
                     <td>{u.full_name || '-'}</td>
@@ -363,6 +434,52 @@ export default function Users() {
                       ))}
                     </select>
                   </div>
+
+                  {/* Avatar */}
+                  {editingUser && (
+                    <div className="mb-3">
+                      <label className="form-label">Avatar</label>
+                      {avatarPreview ? (
+                        <div className="border rounded p-3 text-center">
+                          <img
+                            src={`http://localhost:8000${avatarPreview}`}
+                            alt="Avatar"
+                            className="rounded-circle mb-2"
+                            style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                          />
+                          <div>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger"
+                              onClick={handleAvatarDelete}
+                              disabled={uploadingAvatar}
+                            >
+                              Delete Avatar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border rounded p-3 text-center">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            onChange={handleAvatarUpload}
+                            disabled={uploadingAvatar}
+                            className="form-control"
+                          />
+                          <small className="text-muted">
+                            Max size: 5MB. Formats: JPEG, PNG, WebP, GIF
+                          </small>
+                        </div>
+                      )}
+                      {uploadingAvatar && (
+                        <div className="text-center mt-2">
+                          <span className="spinner-border spinner-border-sm" role="status"></span>
+                          <span className="ms-2">Uploading...</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Modal footer */}
