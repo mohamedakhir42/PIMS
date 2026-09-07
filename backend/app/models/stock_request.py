@@ -13,9 +13,9 @@ class RequestStatus(str, enum.Enum):
     PENDING_APPROVAL = "PENDING_APPROVAL"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
-    PREPARING = "PREPARING"
-    READY = "READY"
-    ISSUED = "ISSUED"
+    READY_FOR_ISSUE = "READY_FOR_ISSUE"
+    PARTIALLY_FULFILLED = "PARTIALLY_FULFILLED"
+    FULFILLED = "FULFILLED"
     CANCELLED = "CANCELLED"
 
 
@@ -39,6 +39,8 @@ class StockRequest(Base):
     rejection_reason = Column(Text)
     approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
+    issued_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    issued_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -216,6 +216,11 @@ def submit_request(
     db.commit()
     db.refresh(db_request)
 
+    # Auto-transition to PENDING_APPROVAL for maintenance manager review
+    db_request.status = RequestStatus.PENDING_APPROVAL
+    db.commit()
+    db.refresh(db_request)
+
     # Notify approvers about new request
     from app.models.role import Role
     from app.models.user_permission import UserPermission
@@ -364,7 +369,7 @@ def approve_request(
             detail="Request is not pending approval",
         )
 
-    db_request.status = RequestStatus.APPROVED
+    db_request.status = RequestStatus.READY_FOR_ISSUE
     db_request.approved_by = current_user.id
     db_request.approved_at = datetime.utcnow()
 
@@ -453,10 +458,10 @@ def issue_request(
             detail="Request not found",
         )
 
-    if db_request.status != RequestStatus.APPROVED:
+    if db_request.status != RequestStatus.READY_FOR_ISSUE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Request must be approved before issuing stock",
+            detail="Request must be ready for issue before issuing stock",
         )
 
     try:
@@ -511,7 +516,7 @@ def issue_request(
             stock.quantity -= item.quantity
 
         # Update request status
-        db_request.status = RequestStatus.ISSUED
+        db_request.status = RequestStatus.FULFILLED
         db_request.issued_by = current_user.id
         db_request.issued_at = datetime.utcnow()
 

@@ -81,7 +81,7 @@ export interface Stock {
 
 export type MovementType = 'RECEIPT' | 'ISSUE' | 'TRANSFER' | 'RETURN' | 'ADJUSTMENT' | 'INVENTORY_ADJUSTMENT';
 
-export type RequestStatus = 'DRAFT' | 'SUBMITTED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'PREPARING' | 'READY' | 'ISSUED' | 'CANCELLED';
+export type RequestStatus = 'DRAFT' | 'SUBMITTED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'READY_FOR_ISSUE' | 'PARTIALLY_FULFILLED' | 'FULFILLED' | 'CANCELLED';
 
 export type RequestPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
@@ -158,4 +158,50 @@ export interface DashboardData {
     user_id: string;
     created_at: string;
   }>;
+}
+
+export interface Site {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  address?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  site_id: string;
+  manager?: string;
+  description?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Zone {
+  id: string;
+  code: string;
+  name: string;
+  warehouse_id: string;
+  description?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Location {
+  id: string;
+  code: string;
+  name: string;
+  zone_id: string;
+  capacity?: number;
+  description?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }

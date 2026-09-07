@@ -221,6 +221,19 @@ def create_receipt(
     )
 
     try:
+        # Check if article is active
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if not article:
+            raise HTTPException(
+                status_code=404,
+                detail="Article not found",
+            )
+        if article.status != Article.ArticleStatus.ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot create movement for inactive article",
+            )
+        
         # IMPORTANT :
         # StockMovementModel = modèle SQLAlchemy
         # StockMovement = schema Pydantic
@@ -311,6 +324,19 @@ def create_issue(
         )
 
     try:
+        # Check if article is active
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if not article:
+            raise HTTPException(
+                status_code=404,
+                detail="Article not found",
+            )
+        if article.status != Article.ArticleStatus.ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot create movement for inactive article",
+            )
+        
         stock = (
             db.query(StockModel)
             .filter(
@@ -414,6 +440,19 @@ def create_transfer(
         )
 
     try:
+        # Check if article is active
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if not article:
+            raise HTTPException(
+                status_code=404,
+                detail="Article not found",
+            )
+        if article.status != Article.ArticleStatus.ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot create movement for inactive article",
+            )
+        
         # Vérifier le stock source
         source_stock = (
             db.query(StockModel)
@@ -529,6 +568,19 @@ def create_adjustment(
     )
 
     try:
+        # Check if article is active
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if not article:
+            raise HTTPException(
+                status_code=404,
+                detail="Article not found",
+            )
+        if article.status != Article.ArticleStatus.ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot create movement for inactive article",
+            )
+        
         db_movement = StockMovementModel(
             movement_number=movement_number,
             user_id=current_user.id,
@@ -622,6 +674,19 @@ def create_return(
     )
 
     try:
+        # Check if article is active
+        article = db.query(Article).filter(Article.id == movement.article_id).first()
+        if not article:
+            raise HTTPException(
+                status_code=404,
+                detail="Article not found",
+            )
+        if article.status != Article.ArticleStatus.ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot create movement for inactive article",
+            )
+        
         db_movement = StockMovementModel(
             movement_number=movement_number,
             user_id=current_user.id,
