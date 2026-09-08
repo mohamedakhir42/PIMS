@@ -328,14 +328,13 @@ const Layout: React.FC = () => {
 
         {/* Logo */}
         <div className="p-3 border-bottom border-secondary">
-
-          <h5
-            className={`mb-0 ${
+          <img src="../../public/assets/logo-ocp.png" style={{
+            width:"40px",
+            margin:"10px"
+          }}
+          className={`mb-0 ${
               !sidebarOpen ? 'd-none' : ''
-            }`}
-          >
-            PIMS
-          </h5>
+            }`}></img>
 
           <span
             className={`small ${
@@ -443,10 +442,6 @@ const Layout: React.FC = () => {
           </button>
 
           <div className="d-flex align-items-center gap-3">
-
-            <span className="text-muted">
-              Phosboucraa Inventory Management
-            </span>
 
             {currentUser && (
               <div className="d-flex align-items-center gap-2">
