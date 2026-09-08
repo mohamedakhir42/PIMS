@@ -85,7 +85,7 @@ const Articles: React.FC = () => {
   const handleBarcodeScan = (barcode: string) => {
     setSearchTerm(barcode);
     setShowScanner(false);
-    
+
     const foundArticle = articles.find(a => a.barcode === barcode);
     if (foundArticle) {
       window.location.href = `/inventory/articles/${foundArticle.id}`;
@@ -160,8 +160,8 @@ const Articles: React.FC = () => {
     try {
       const submitData = {
         ...formData,
-        stock_max: formData.stock_max ? parseInt(formData.stock_max) : null,
-        reorder_point: formData.reorder_point ? parseInt(formData.reorder_point) : null
+        stock_max: formData.stock_max ? parseInt(formData.stock_max) : undefined,
+        reorder_point: formData.reorder_point ? parseInt(formData.reorder_point) : undefined
       };
       if (editingArticle) {
         await articlesService.updateArticle(editingArticle.id, submitData);
@@ -197,7 +197,7 @@ const Articles: React.FC = () => {
 
     setUploadingImage(true);
     try {
-      const updatedArticle = await articleService.uploadImage(editingArticle.id, file);
+      const updatedArticle = await articlesService.uploadImage(editingArticle.id, file);
       setImagePreview(updatedArticle.image_url || null);
       setEditingArticle(updatedArticle);
       alert('Image uploaded successfully');
@@ -217,7 +217,7 @@ const Articles: React.FC = () => {
     }
 
     try {
-      const updatedArticle = await articleService.deleteImage(editingArticle.id);
+      const updatedArticle = await articlesService.deleteImage(editingArticle.id);
       setImagePreview(null);
       setEditingArticle(updatedArticle);
       alert('Image deleted successfully');

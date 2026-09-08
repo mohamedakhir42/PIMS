@@ -6,7 +6,7 @@ import { sitesService } from '../services/sites';
 import { warehousesService } from '../services/warehouses';
 import { zonesService } from '../services/zones';
 import { locationsService } from '../services/locations';
-import { Article, StockRequest, Site, Warehouse, Zone, Location } from '../types';
+import { Site, Warehouse, Zone, Location } from '../types';
 
 export default function Requests() {
   const [rows, setRows] = useState<any[]>([]);
@@ -114,7 +114,7 @@ export default function Requests() {
       await requestsService.issue(issueRequestId, issueForm);
       setShowIssueModal(false);
       setIssueRequestId(null);
-      setIssueForm({ location_id: '', warehouse_id: '', site_id: '',zone_id: '' });
+      setIssueForm({ location_id: '', warehouse_id: '', site_id: '', zone_id: '' });
       load();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to issue material';
@@ -281,7 +281,7 @@ export default function Requests() {
 
       <Modal
         show={showIssueModal}
-        onHide={() => { setShowIssueModal(false); setIssueRequestId(null); setIssueForm({ location_id: '', warehouse_id: '', site_id: '' }); setWarehouses([]); setZones([]); setLocations([]); }}
+        onHide={() => { setShowIssueModal(false); setIssueRequestId(null); setIssueForm({ location_id: '', warehouse_id: '', site_id: '', zone_id: '' }); setWarehouses([]); setZones([]); setLocations([]); }}
         title="Issue Material"
         size="sm"
       >
@@ -323,7 +323,7 @@ export default function Requests() {
             </select>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={() => { setShowIssueModal(false); setIssueRequestId(null); setIssueForm({ location_id: '', warehouse_id: '', site_id: '' }); setWarehouses([]); setZones([]); setLocations([]); }}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setShowIssueModal(false); setIssueRequestId(null); setIssueForm({ location_id: '', warehouse_id: '', site_id: '', zone_id: '' }); setWarehouses([]); setZones([]); setLocations([]); }}>Cancel</button>
             <button type="submit" className="btn btn-primary">Issue Material</button>
           </div>
         </form>

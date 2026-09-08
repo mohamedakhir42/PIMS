@@ -73,7 +73,7 @@ const ArticleDetail: React.FC = () => {
     try {
       const data = await stockService.getMovements();
       // Filter movements for this article
-      const articleMovements = data.filter(m => m.article_id === articleId);
+      const articleMovements = data.filter((m: any) => m.article_id === articleId);
       setStockMovements(articleMovements);
     } catch (error) {
       console.error('Error loading stock movements:', error);

@@ -1,4 +1,3 @@
-import { MOVEMENT_TYPE } from '../styles/colors';
 import api from './api';
 
 export const stockService = {
@@ -24,16 +23,16 @@ export const stockService = {
 
   createReceipt: async (data: any) => {
     const response = await api.post('/stock/receipt', {
-    ...data,
-    movement_type: 'RECEIPT',
-  });
+      ...data,
+      movement_type: 'RECEIPT',
+    });
     return response.data;
   },
 
   createIssue: async (data: any) => {
     const response = await api.post('/stock/issue', {
       ...data,
-      movement_type:'ISSUE',
+      movement_type: 'ISSUE',
     });
     return response.data;
   },
@@ -41,24 +40,24 @@ export const stockService = {
   createTransfer: async (data: any) => {
     const response = await api.post('/stock/transfer', {
       ...data,
-      movment_type:'TRANSFER'
+      movement_type: 'TRANSFER'
     });
     return response.data;
   },
 
   createReturn: async (data: any) => {
     const response = await api.post('/stock/return', {
-    ...data,
-    movement_type: 'RETURN',
-  });
+      ...data,
+      movement_type: 'RETURN',
+    });
     return response.data;
   },
 
   createAdjustment: async (data: any) => {
     const response = await api.post('/stock/adjustment', {
-    ...data,
-    movement_type: 'ADJUSTMENT',
-  });
+      ...data,
+      movement_type: 'ADJUSTMENT',
+    });
     return response.data;
   },
 };
