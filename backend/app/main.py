@@ -17,7 +17,10 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=[
+        "https://frontend-production-b095.up.railway.app",
+        "http://localhost:5173",  # dev local (Vite)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
