@@ -5,14 +5,13 @@ import uuid
 import os
 
 from app.db.database import get_db
-from app.models.article import Article as ArticleModel
+from app.models.article import Article as ArticleModel, ArticleStatus
 from app.models.stock_movement import StockMovement
 from app.schemas.article import ArticleCreate, ArticleUpdate, Article
 from app.utils.deps import check_permission
 from app.models.user import User
 from app.services.audit import write_audit
 from app.utils.files import validate_image_file, save_uploaded_file, delete_file
-
 
 router = APIRouter()
 
@@ -172,7 +171,7 @@ def delete_article(
     if movement_count > 0:
         # Article has history - disable instead of delete
         old_status = db_article.status
-        db_article.status = ArticleModel.ArticleStatus.INACTIVE
+        db_article.status = ArticleStatus.INACTIVE
         
         # Audit logging
         write_audit(

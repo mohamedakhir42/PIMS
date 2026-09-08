@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { authService } from '../services/auth';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Tag, 
-  ClipboardList, 
-  Building2, 
-  Warehouse, 
-  MapPin, 
-  Map, 
-  Users, 
+import {
+  LayoutDashboard,
+  Package,
+  Tag,
+  ClipboardList,
+  Building2,
+  Warehouse,
+  MapPin,
+  Map,
+  Users,
   Settings,
   LogOut,
   Menu,
@@ -315,9 +315,8 @@ const Layout: React.FC = () => {
 
       {/* Sidebar */}
       <div
-        className={`bg-dark text-white ${
-          sidebarOpen ? 'col-md-2' : 'col-auto'
-        } d-flex flex-column`}
+        className={`bg-dark text-white ${sidebarOpen ? 'col-md-2' : 'col-auto'
+          } d-flex flex-column`}
         style={{
           minWidth: sidebarOpen
             ? '250px'
@@ -327,23 +326,40 @@ const Layout: React.FC = () => {
       >
 
         {/* Logo */}
-        <div className="p-3 border-bottom border-secondary">
-          <img src="../../public/assets/logo-ocp.png" style={{
-            width:"40px",
-            margin:"10px"
+        <div
+          className="p-3 border-bottom border-secondary"
+          style={{
+            height: "80px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: sidebarOpen ? "flex-center" : "center",
+            gap: "10px",
           }}
-          className={`mb-0 ${
-              !sidebarOpen ? 'd-none' : ''
-            }`}></img>
+        >
+          <img
+            src="/assets/logo-ocp-1.png"
+            alt="OCP Logo"
+            style={{
+              width: "42px",
+              height: "42px",
+              objectFit: "contain",
+              flexShrink: 0,
+            }}
+          />
 
-          <span
-            className={`small ${
-              !sidebarOpen ? 'd-none' : ''
-            }`}
-          >
-            Phosboucraa Inventory
-          </span>
-
+          {sidebarOpen && (
+            <span
+              style={{
+                fontSize: "23px",
+                fontFamily: "'Roboto Condensed', sans-serif",
+                fontWeight: "500",
+                lineHeight: "1",
+                letterSpacing: "1px",
+              }}
+            >
+              OCP
+            </span>
+          )}
         </div>
 
         {/* Navigation */}
@@ -359,11 +375,10 @@ const Layout: React.FC = () => {
                 return (
                   <div
                     key={`header-${index}`}
-                    className={`px-3 py-2 text-muted small fw-bold ${
-                      !sidebarOpen
-                        ? 'd-none'
-                        : ''
-                    }`}
+                    className={`px-3 py-2 text-muted small fw-bold ${!sidebarOpen
+                      ? 'd-none'
+                      : ''
+                      }`}
                   >
                     {item.header}
                   </div>
@@ -380,11 +395,10 @@ const Layout: React.FC = () => {
                 <Link
                   key={item.path}
                   to={item.path!}
-                  className={`d-flex align-items-center px-3 py-2 text-decoration-none ${
-                    isActive
-                      ? 'bg-primary text-white'
-                      : 'text-white hover-bg-secondary'
-                  }`}
+                  className={`d-flex align-items-center px-3 py-2 text-decoration-none ${isActive
+                    ? 'bg-primary text-white'
+                    : 'text-white hover-bg-secondary'
+                    }`}
                   style={{
                     transition:
                       'background-color 0.2s',
@@ -396,11 +410,10 @@ const Layout: React.FC = () => {
                   </span>
 
                   <span
-                    className={`ms-2 ${
-                      !sidebarOpen
-                        ? 'd-none'
-                        : ''
-                    }`}
+                    className={`ms-2 ${!sidebarOpen
+                      ? 'd-none'
+                      : ''
+                      }`}
                   >
                     {item.label}
                   </span>
