@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import api, { API_ORIGIN } from '../services/api';
+import { API_ORIGIN } from '../services/api';
 import { authService } from '../services/auth';
 import {
   LayoutDashboard,
