@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usersService } from '../services/users';
 import { User } from '../types';
+import { API_ORIGIN } from '../services/api';
 
 export default function Users() {
   const navigate = useNavigate();
@@ -207,7 +208,7 @@ export default function Users() {
                     <td>
                       {u.avatar_url ? (
                         <img
-                          src={`http://localhost:8000${u.avatar_url}`}
+                          src={`${API_ORIGIN}${u.avatar_url}`}
                           alt={u.username}
                           className="rounded-circle"
                           style={{ width: '40px', height: '40px', objectFit: 'cover' }}
@@ -442,7 +443,7 @@ export default function Users() {
                       {avatarPreview ? (
                         <div className="border rounded p-3 text-center">
                           <img
-                            src={`http://localhost:8000${avatarPreview}`}
+                            src={`${API_ORIGIN}${avatarPreview}`}
                             alt="Avatar"
                             className="rounded-circle mb-2"
                             style={{ width: '100px', height: '100px', objectFit: 'cover' }}

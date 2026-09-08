@@ -6,6 +6,7 @@ import { supplierService } from '../services/suppliers';
 import { Article, ArticleStatus, Category, Supplier } from '../types';
 import BarcodeScanner from '../components/BarcodeScanner';
 import { Camera } from 'lucide-react';
+import { API_ORIGIN } from '../services/api';
 
 type BadgeColor = 'success' | 'secondary' | 'danger';
 
@@ -483,7 +484,7 @@ const Articles: React.FC = () => {
                       {imagePreview ? (
                         <div className="border rounded p-3">
                           <img
-                            src={`http://localhost:8000${imagePreview}`}
+                            src={`${API_ORIGIN}${imagePreview}`}
                             alt="Article"
                             className="img-fluid mb-2"
                             style={{ maxHeight: '200px' }}

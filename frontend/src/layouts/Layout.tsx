@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import api, { API_ORIGIN } from '../services/api';
 import { authService } from '../services/auth';
 import {
   LayoutDashboard,
@@ -460,7 +461,7 @@ const Layout: React.FC = () => {
               <div className="d-flex align-items-center gap-2">
                 {currentUser.avatar_url ? (
                   <img
-                    src={`http://localhost:8000${currentUser.avatar_url}`}
+                    src={`${API_ORIGIN}${currentUser.avatar_url}`}
                     alt={currentUser.username}
                     className="rounded-circle"
                     style={{ width: '32px', height: '32px', objectFit: 'cover' }}
