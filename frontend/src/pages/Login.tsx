@@ -40,7 +40,7 @@ const Login: React.FC = () => {
     <div
       className="min-vh-100 d-flex align-items-center justify-content-center position-relative"
       style={{
-        backgroundImage: "url('../../public/assets/background-login.png')",
+        backgroundImage: "url('/assets/background-login.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -80,7 +80,7 @@ const Login: React.FC = () => {
                 <div
                   className="rounded-circle d-inline-flex align-items-center justify-content-center"
                 >
-                  <img src="../../public/assets/logo-ocp.png" width="60px"></img>
+                  <img src="/assets/logo-ocp.png" width="60px"></img>
                 </div>
               </div>
 
